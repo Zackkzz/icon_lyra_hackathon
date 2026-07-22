@@ -17,18 +17,22 @@ public record FridgeItemDto(
     string Category,
     decimal Quantity,
     Unit Unit,
-    DateTime BestBeforeDate,
     DateTime AddedAt,
-    Source Source
+    Source Source,
+    decimal? UnitPrice,   // price per PriceUnit of the ingredient
+    Unit? PriceUnit,
+    decimal? LineValue    // approx value of this stock (null if price unit incompatible)
 );
 
 public record AddFridgeItemRequest(
     int IngredientId,
     decimal Quantity,
     Unit Unit,
-    DateTime BestBeforeDate,
     Source Source = Source.Manual
 );
+
+// Manually set/override an ingredient's price.
+public record SetIngredientPriceRequest(decimal PricePerUnit, Unit PriceUnit);
 
 // ---- Receipt scanning (OCR) ----
 
@@ -42,19 +46,19 @@ public record ParsedReceiptItemDto(
     string Category,
     decimal Quantity,
     Unit Unit,
-    DateTime BestBeforeDate
+    decimal Price          // total price paid for this line
 );
 
 public record ScanReceiptResponse(List<ParsedReceiptItemDto> Items);
 
-// A reviewed/edited item the user confirms into the fridge.
+// A reviewed/edited item the user confirms into the pantry.
 public record ConfirmReceiptItem(
     int? IngredientId,
     string Name,
     string Category,
     decimal Quantity,
     Unit Unit,
-    DateTime BestBeforeDate
+    decimal Price
 );
 
 public record ConfirmReceiptRequest(List<ConfirmReceiptItem> Items);
@@ -70,6 +74,10 @@ public record RecipeDto(
     int PrepTimeMinutes,
     string? ImageUrl,
     bool IsAiGenerated,
+    bool IsBookmarked,
+    decimal? CostPerServing,
+    decimal? TotalCost,
+    int PricedIngredients,
     List<RecipeIngredientDto> Ingredients
 );
 
@@ -79,7 +87,8 @@ public record RecipeIngredientDto(
     decimal Quantity,
     Unit Unit,
     bool InFridge,
-    decimal FridgeQuantity
+    decimal FridgeQuantity,
+    decimal? LineCost
 );
 
 public record RecipeSummaryDto(
@@ -90,18 +99,18 @@ public record RecipeSummaryDto(
     int PrepTimeMinutes,
     string? ImageUrl,
     bool IsAiGenerated,
+    bool IsBookmarked,
+    decimal? CostPerServing,
     int MatchCount,
     int TotalIngredients,
-    double MatchPercentage,
-    bool UsesExpiring,
-    List<string> ExpiringIngredients
+    double MatchPercentage
 );
 
-// Categorised suggestions for the Recipes tab.
+// Categorised recipes for the Recipes tab.
 public record FridgeSuggestionsDto(
-    List<RecipeSummaryDto> CookFirst,
+    List<RecipeSummaryDto> Bookmarked,
     List<RecipeSummaryDto> CanCook,
-    List<RecipeSummaryDto> AlmostCanCook
+    List<RecipeSummaryDto> More
 );
 
 public record GenerateRecipesRequest(int Count = 3);
@@ -115,9 +124,23 @@ public record CookedMealDto(
     int? RecipeId,
     string RecipeName,
     int Portions,
-    int PortionsAvailable,
+    decimal Cost,
     DateTime CookedAt
 );
+
+// ---- Spending ----
+
+public record PreppedMealDto(string RecipeName, int Portions, decimal Cost, DateTime CookedAt);
+
+public record WeekSpendingDto(
+    DateOnly WeekStart,
+    decimal Spent,          // grocery spend from receipts that week
+    int PurchaseCount,
+    decimal PreppedCost,    // ingredient cost of meals prepped that week
+    List<PreppedMealDto> MealsPrepped
+);
+
+public record SpendingResponse(decimal TotalSpent, List<WeekSpendingDto> Weeks);
 
 // ---- Meal plan ----
 

@@ -27,12 +27,7 @@ public class CookedMealsController : ControllerBase
             .Where(cm => cm.UserId == userId)
             .OrderByDescending(cm => cm.CookedAt)
             .Select(cm => new CookedMealDto(
-                cm.Id,
-                cm.RecipeId,
-                cm.RecipeName,
-                cm.Portions,
-                cm.Portions - cm.MealPlans.Count(),
-                cm.CookedAt))
+                cm.Id, cm.RecipeId, cm.RecipeName, cm.Portions, cm.Cost, cm.CookedAt))
             .ToListAsync();
 
         return Ok(meals);
@@ -117,18 +112,28 @@ public class CookedMealsController : ControllerBase
             }
         }
 
+        // Cost of the ingredients used (scaled to the portions cooked).
+        decimal cost = 0;
+        foreach (var ri in recipe.RecipeIngredients)
+        {
+            if (ri.Ingredient == null) continue;
+            var c = CostService.LineCost(ri.Ingredient, ri.Quantity * (decimal)scale, ri.Unit);
+            if (c is { } v) cost += v;
+        }
+
         var cooked = new CookedMeal
         {
             UserId = userId,
             RecipeId = recipe.Id,
             RecipeName = recipe.Name,
             Portions = portions,
+            Cost = Math.Round(cost, 2),
             CookedAt = DateTime.UtcNow
         };
         _db.CookedMeals.Add(cooked);
         await _db.SaveChangesAsync();
 
-        return Ok(new CookedMealDto(cooked.Id, cooked.RecipeId, cooked.RecipeName, cooked.Portions, portions, cooked.CookedAt));
+        return Ok(new CookedMealDto(cooked.Id, cooked.RecipeId, cooked.RecipeName, cooked.Portions, cooked.Cost, cooked.CookedAt));
     }
 
     private static string Fmt(decimal q) =>

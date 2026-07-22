@@ -15,6 +15,8 @@ public class AppDbContext : DbContext
     public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
     public DbSet<CookedMeal> CookedMeals => Set<CookedMeal>();
+    public DbSet<Purchase> Purchases => Set<Purchase>();
+    public DbSet<RecipeBookmark> RecipeBookmarks => Set<RecipeBookmark>();
     public DbSet<ShoppingList> ShoppingLists => Set<ShoppingList>();
     public DbSet<ShoppingListItem> ShoppingListItems => Set<ShoppingListItem>();
     public DbSet<UnitConversion> UnitConversions => Set<UnitConversion>();
@@ -72,6 +74,19 @@ public class AppDbContext : DbContext
             .HasForeignKey(cm => cm.RecipeId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<Purchase>()
+            .HasIndex(p => p.UserId);
+
+        modelBuilder.Entity<RecipeBookmark>()
+            .HasIndex(b => new { b.UserId, b.RecipeId })
+            .IsUnique();
+
+        modelBuilder.Entity<RecipeBookmark>()
+            .HasOne(b => b.Recipe)
+            .WithMany()
+            .HasForeignKey(b => b.RecipeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<ShoppingListItem>()
             .HasOne(sli => sli.ShoppingList)
             .WithMany(sl => sl.ShoppingListItems)
@@ -86,24 +101,24 @@ public class AppDbContext : DbContext
 
         // ---- Seed Data ----
 
-        // 15 common ingredients
+        // 15 common ingredients, with seed prices (PriceUnit matches how recipes use them)
         var ingredients = new[]
         {
-            new Ingredient { Id = 1, Name = "Chicken Breast", Category = "Meat", DensityGPerMl = 1.05m },
-            new Ingredient { Id = 2, Name = "Rice", Category = "Grains", DensityGPerMl = 0.85m },
-            new Ingredient { Id = 3, Name = "Onion", Category = "Vegetables", DensityGPerMl = 0.74m },
-            new Ingredient { Id = 4, Name = "Garlic", Category = "Vegetables", DensityGPerMl = 1.10m },
-            new Ingredient { Id = 5, Name = "Tomato", Category = "Vegetables", DensityGPerMl = 1.00m },
-            new Ingredient { Id = 6, Name = "Olive Oil", Category = "Oils", DensityGPerMl = 0.92m },
-            new Ingredient { Id = 7, Name = "Eggs", Category = "Dairy", DensityGPerMl = 1.03m },
-            new Ingredient { Id = 8, Name = "Milk", Category = "Dairy", DensityGPerMl = 1.03m },
-            new Ingredient { Id = 9, Name = "Butter", Category = "Dairy", DensityGPerMl = 0.91m },
-            new Ingredient { Id = 10, Name = "Flour", Category = "Baking", DensityGPerMl = 0.53m },
-            new Ingredient { Id = 11, Name = "Pasta", Category = "Grains", DensityGPerMl = 0.60m },
-            new Ingredient { Id = 12, Name = "Bell Pepper", Category = "Vegetables", DensityGPerMl = 0.51m },
-            new Ingredient { Id = 13, Name = "Carrot", Category = "Vegetables", DensityGPerMl = 0.64m },
-            new Ingredient { Id = 14, Name = "Broccoli", Category = "Vegetables", DensityGPerMl = 0.63m },
-            new Ingredient { Id = 15, Name = "Cheese", Category = "Dairy", DensityGPerMl = 1.10m }
+            new Ingredient { Id = 1, Name = "Chicken Breast", Category = "Meat", DensityGPerMl = 1.05m, PricePerUnit = 12m, PriceUnit = Unit.Kilograms },
+            new Ingredient { Id = 2, Name = "Rice", Category = "Grains", DensityGPerMl = 0.85m, PricePerUnit = 2.5m, PriceUnit = Unit.Kilograms },
+            new Ingredient { Id = 3, Name = "Onion", Category = "Vegetables", DensityGPerMl = 0.74m, PricePerUnit = 0.5m, PriceUnit = Unit.Pieces },
+            new Ingredient { Id = 4, Name = "Garlic", Category = "Vegetables", DensityGPerMl = 1.10m, PricePerUnit = 0.4m, PriceUnit = Unit.Pieces },
+            new Ingredient { Id = 5, Name = "Tomato", Category = "Vegetables", DensityGPerMl = 1.00m, PricePerUnit = 0.6m, PriceUnit = Unit.Pieces },
+            new Ingredient { Id = 6, Name = "Olive Oil", Category = "Oils", DensityGPerMl = 0.92m, PricePerUnit = 12m, PriceUnit = Unit.Litres },
+            new Ingredient { Id = 7, Name = "Eggs", Category = "Dairy", DensityGPerMl = 1.03m, PricePerUnit = 0.5m, PriceUnit = Unit.Pieces },
+            new Ingredient { Id = 8, Name = "Milk", Category = "Dairy", DensityGPerMl = 1.03m, PricePerUnit = 1.5m, PriceUnit = Unit.Litres },
+            new Ingredient { Id = 9, Name = "Butter", Category = "Dairy", DensityGPerMl = 0.91m, PricePerUnit = 14m, PriceUnit = Unit.Kilograms },
+            new Ingredient { Id = 10, Name = "Flour", Category = "Baking", DensityGPerMl = 0.53m, PricePerUnit = 2m, PriceUnit = Unit.Kilograms },
+            new Ingredient { Id = 11, Name = "Pasta", Category = "Grains", DensityGPerMl = 0.60m, PricePerUnit = 3.5m, PriceUnit = Unit.Kilograms },
+            new Ingredient { Id = 12, Name = "Bell Pepper", Category = "Vegetables", DensityGPerMl = 0.51m, PricePerUnit = 1.2m, PriceUnit = Unit.Pieces },
+            new Ingredient { Id = 13, Name = "Carrot", Category = "Vegetables", DensityGPerMl = 0.64m, PricePerUnit = 2m, PriceUnit = Unit.Kilograms },
+            new Ingredient { Id = 14, Name = "Broccoli", Category = "Vegetables", DensityGPerMl = 0.63m, PricePerUnit = 4m, PriceUnit = Unit.Kilograms },
+            new Ingredient { Id = 15, Name = "Cheese", Category = "Dairy", DensityGPerMl = 1.10m, PricePerUnit = 10m, PriceUnit = Unit.Kilograms }
         };
 
         modelBuilder.Entity<Ingredient>().HasData(ingredients);

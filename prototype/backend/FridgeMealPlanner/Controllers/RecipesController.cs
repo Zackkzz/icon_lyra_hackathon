@@ -14,7 +14,6 @@ namespace FridgeMealPlanner.Controllers;
 [Route("api/[controller]")]
 public class RecipesController : ControllerBase
 {
-    private const int ExpiringSoonDays = 4;
     private const double AlmostThreshold = 70.0;
 
     private readonly AppDbContext _db;
@@ -26,18 +25,19 @@ public class RecipesController : ControllerBase
         _generator = generator;
     }
 
-    // All recipes visible to this user (global + their own). Used by the Plan tab.
     [HttpGet]
     public async Task<ActionResult<List<RecipeSummaryDto>>> GetAll()
     {
         var userId = User.GetUserId();
+        var bookmarks = await BookmarkIds(userId);
         var recipes = await VisibleRecipes(userId)
-            .Select(r => new RecipeSummaryDto(
-                r.Id, r.Name, r.Description, r.Servings, r.PrepTimeMinutes, r.ImageUrl,
-                r.IsAiGenerated, 0, r.RecipeIngredients.Count, 0, false, new List<string>()))
+            .Include(r => r.RecipeIngredients).ThenInclude(ri => ri.Ingredient)
             .ToListAsync();
 
-        return Ok(recipes);
+        var result = recipes
+            .Select(r => Summary(r, new HashSet<int>(), bookmarks))
+            .ToList();
+        return Ok(result);
     }
 
     [HttpGet("{id}")]
@@ -46,92 +46,71 @@ public class RecipesController : ControllerBase
         var userId = User.GetUserId();
 
         var recipe = await _db.Recipes
-            .Include(r => r.RecipeIngredients)
-            .ThenInclude(ri => ri.Ingredient)
+            .Include(r => r.RecipeIngredients).ThenInclude(ri => ri.Ingredient)
             .FirstOrDefaultAsync(r => r.Id == id && (r.UserId == null || r.UserId == userId));
-
         if (recipe == null) return NotFound();
 
-        // Which ingredients does the user already have (summed per ingredient)?
         var fridge = await _db.FridgeItems
             .Where(f => f.UserId == userId)
             .GroupBy(f => f.IngredientId)
             .Select(g => new { IngredientId = g.Key, Quantity = g.Sum(x => x.Quantity) })
             .ToDictionaryAsync(x => x.IngredientId, x => x.Quantity);
 
+        var bookmarked = await _db.RecipeBookmarks.AnyAsync(b => b.UserId == userId && b.RecipeId == id);
+        var (total, priced, _) = CostService.RecipeCost(recipe);
+
         return Ok(new RecipeDto(
             recipe.Id, recipe.Name, recipe.Description, recipe.Instructions,
             recipe.Servings, recipe.PrepTimeMinutes, recipe.ImageUrl, recipe.IsAiGenerated,
+            bookmarked,
+            CostService.CostPerServing(recipe),
+            priced > 0 ? total : null,
+            priced,
             recipe.RecipeIngredients.Select(ri => new RecipeIngredientDto(
                 ri.IngredientId, ri.Ingredient.Name, ri.Quantity, ri.Unit,
                 fridge.ContainsKey(ri.IngredientId),
-                fridge.TryGetValue(ri.IngredientId, out var q) ? q : 0
+                fridge.TryGetValue(ri.IngredientId, out var q) ? q : 0,
+                ri.Ingredient == null ? null : CostService.LineCost(ri.Ingredient, ri.Quantity, ri.Unit)
             )).ToList()
         ));
     }
 
-    // Categorised suggestions based on the user's fridge.
+    // Recipes grouped for the Recipes tab: saved, cookable from pantry, and the rest.
     [HttpGet("for-fridge")]
     public async Task<ActionResult<FridgeSuggestionsDto>> ForFridge()
     {
         var userId = User.GetUserId();
 
-        var fridge = await _db.FridgeItems
+        var inFridge = (await _db.FridgeItems
             .Where(f => f.UserId == userId)
-            .ToListAsync();
-
-        var today = DateTime.UtcNow.Date;
-        var inFridge = fridge.Select(f => f.IngredientId).ToHashSet();
-        var expiring = fridge
-            .Where(f => (f.BestBeforeDate.Date - today).TotalDays <= ExpiringSoonDays)
             .Select(f => f.IngredientId)
-            .ToHashSet();
+            .ToListAsync()).ToHashSet();
+
+        var bookmarks = await BookmarkIds(userId);
 
         var recipes = await VisibleRecipes(userId)
-            .Include(r => r.RecipeIngredients)
-            .ThenInclude(ri => ri.Ingredient)
+            .Include(r => r.RecipeIngredients).ThenInclude(ri => ri.Ingredient)
             .ToListAsync();
 
-        var summaries = recipes.Select(r =>
-        {
-            var total = r.RecipeIngredients.Count;
-            var matchCount = r.RecipeIngredients.Count(ri => inFridge.Contains(ri.IngredientId));
-            var pct = total > 0 ? Math.Round((double)matchCount / total * 100, 0) : 0;
-            var expiringNames = r.RecipeIngredients
-                .Where(ri => expiring.Contains(ri.IngredientId))
-                .Select(ri => ri.Ingredient.Name)
-                .Distinct()
-                .ToList();
+        var summaries = recipes.Select(r => Summary(r, inFridge, bookmarks)).ToList();
 
-            return new RecipeSummaryDto(
-                r.Id, r.Name, r.Description, r.Servings, r.PrepTimeMinutes, r.ImageUrl,
-                r.IsAiGenerated, matchCount, total, pct,
-                expiringNames.Count > 0, expiringNames);
-        }).ToList();
+        var bookmarked = summaries.Where(s => s.IsBookmarked)
+            .OrderBy(s => s.Name).ToList();
 
-        // High priority: uses ingredients about to expire → cook these first.
-        var cookFirst = summaries
-            .Where(s => s.UsesExpiring)
-            .OrderByDescending(s => s.ExpiringIngredients.Count)
-            .ThenByDescending(s => s.MatchPercentage)
-            .ToList();
-
-        // Medium priority: can be cooked entirely from the fridge.
         var canCook = summaries
-            .Where(s => s.TotalIngredients > 0 && s.MatchCount == s.TotalIngredients)
-            .OrderByDescending(s => s.MatchCount)
+            .Where(s => !s.IsBookmarked && s.TotalIngredients > 0 && s.MatchCount == s.TotalIngredients)
+            .OrderBy(s => s.CostPerServing ?? decimal.MaxValue)
             .ToList();
 
-        // Low priority: at least 70% of ingredients on hand (but not all).
-        var almostCanCook = summaries
-            .Where(s => s.MatchPercentage >= AlmostThreshold && s.MatchCount < s.TotalIngredients)
+        var more = summaries
+            .Where(s => !s.IsBookmarked && !(s.TotalIngredients > 0 && s.MatchCount == s.TotalIngredients))
             .OrderByDescending(s => s.MatchPercentage)
+            .ThenBy(s => s.CostPerServing ?? decimal.MaxValue)
             .ToList();
 
-        return Ok(new FridgeSuggestionsDto(cookFirst, canCook, almostCanCook));
+        return Ok(new FridgeSuggestionsDto(bookmarked, canCook, more));
     }
 
-    // High-priority feature: generate recipes that use close-to-expiry ingredients.
     [HttpPost("generate")]
     public async Task<ActionResult<List<RecipeDto>>> Generate([FromBody] GenerateRecipesRequest? request)
     {
@@ -161,6 +140,41 @@ public class RecipesController : ControllerBase
         }
     }
 
+    // Toggle a bookmark; returns the new state.
+    [HttpPost("{id}/bookmark")]
+    public async Task<ActionResult> ToggleBookmark(int id)
+    {
+        var userId = User.GetUserId();
+        var exists = await _db.Recipes.AnyAsync(r => r.Id == id && (r.UserId == null || r.UserId == userId));
+        if (!exists) return NotFound();
+
+        var existing = await _db.RecipeBookmarks.FirstOrDefaultAsync(b => b.UserId == userId && b.RecipeId == id);
+        if (existing != null)
+        {
+            _db.RecipeBookmarks.Remove(existing);
+            await _db.SaveChangesAsync();
+            return Ok(new { bookmarked = false });
+        }
+
+        _db.RecipeBookmarks.Add(new RecipeBookmark { UserId = userId, RecipeId = id, CreatedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+        return Ok(new { bookmarked = true });
+    }
+
     private IQueryable<Recipe> VisibleRecipes(int userId) =>
         _db.Recipes.Where(r => r.UserId == null || r.UserId == userId);
+
+    private async Task<HashSet<int>> BookmarkIds(int userId) =>
+        (await _db.RecipeBookmarks.Where(b => b.UserId == userId).Select(b => b.RecipeId).ToListAsync()).ToHashSet();
+
+    private static RecipeSummaryDto Summary(Recipe r, HashSet<int> inFridge, HashSet<int> bookmarks)
+    {
+        var total = r.RecipeIngredients.Count;
+        var matchCount = r.RecipeIngredients.Count(ri => inFridge.Contains(ri.IngredientId));
+        var pct = total > 0 ? Math.Round((double)matchCount / total * 100, 0) : 0;
+        return new RecipeSummaryDto(
+            r.Id, r.Name, r.Description, r.Servings, r.PrepTimeMinutes, r.ImageUrl,
+            r.IsAiGenerated, bookmarks.Contains(r.Id), CostService.CostPerServing(r),
+            matchCount, total, pct);
+    }
 }

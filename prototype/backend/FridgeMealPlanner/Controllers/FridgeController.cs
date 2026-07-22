@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FridgeMealPlanner.Controllers;
 
+// The user's pantry: ingredients they own, with prices. (Route kept as /api/Fridge.)
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
@@ -31,13 +32,10 @@ public class FridgeController : ControllerBase
         var items = await _db.FridgeItems
             .Where(f => f.UserId == userId)
             .Include(f => f.Ingredient)
-            .OrderBy(f => f.BestBeforeDate)
-            .Select(f => new FridgeItemDto(
-                f.Id, f.IngredientId, f.Ingredient.Name, f.Ingredient.Category,
-                f.Quantity, f.Unit, f.BestBeforeDate, f.AddedAt, f.Source))
+            .OrderBy(f => f.Ingredient.Name)
             .ToListAsync();
 
-        return Ok(items);
+        return Ok(items.Select(ToDto).ToList());
     }
 
     [HttpPost]
@@ -49,8 +47,7 @@ public class FridgeController : ControllerBase
         if (ingredient == null)
             return NotFound(new { error = $"Ingredient {request.IngredientId} not found" });
 
-        var saved = await AddOrMergeAsync(userId, request.IngredientId, request.Quantity,
-            request.Unit, request.BestBeforeDate, request.Source);
+        var saved = await AddOrMergeAsync(userId, request.IngredientId, request.Quantity, request.Unit, request.Source);
         await _db.SaveChangesAsync();
 
         await _db.Entry(saved).Reference(f => f.Ingredient).LoadAsync();
@@ -69,27 +66,18 @@ public class FridgeController : ControllerBase
         return NoContent();
     }
 
-    [HttpPatch("{id}/use")]
-    public async Task<ActionResult> Use(int id, [FromQuery] decimal quantity = 1)
+    // Manually set / correct an ingredient's price.
+    [HttpPut("ingredient-price/{ingredientId}")]
+    public async Task<ActionResult> SetPrice(int ingredientId, [FromBody] SetIngredientPriceRequest request)
     {
-        var userId = User.GetUserId();
-        var item = await _db.FridgeItems
-            .Include(f => f.Ingredient)
-            .FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
+        var ingredient = await _db.Ingredients.FindAsync(ingredientId);
+        if (ingredient == null) return NotFound();
+        if (request.PricePerUnit < 0) return BadRequest(new { error = "Price must be positive." });
 
-        if (item == null) return NotFound();
-
-        item.Quantity -= quantity;
-
-        if (item.Quantity <= 0)
-        {
-            _db.FridgeItems.Remove(item);
-            await _db.SaveChangesAsync();
-            return Ok(new { removed = true, message = $"Used all of {item.Ingredient.Name}. Removed from fridge." });
-        }
-
+        ingredient.PricePerUnit = request.PricePerUnit;
+        ingredient.PriceUnit = request.PriceUnit;
         await _db.SaveChangesAsync();
-        return Ok(ToDto(item));
+        return NoContent();
     }
 
     // ---- Receipt scanning (OCR) ----
@@ -122,20 +110,19 @@ public class FridgeController : ControllerBase
         if (request.Items == null || request.Items.Count == 0)
             return BadRequest(new { error = "No items to add." });
 
-        var savedItems = new List<FridgeItem>();
+        decimal purchaseTotal = 0;
+        var confirmedCount = 0;
 
         foreach (var item in request.Items)
         {
             var ingredientId = item.IngredientId;
 
-            // Resolve or create the ingredient by name if no id was supplied.
             if (ingredientId is null or <= 0)
             {
                 var name = (item.Name ?? "").Trim();
                 if (string.IsNullOrWhiteSpace(name)) continue;
 
-                var existingIng = await _db.Ingredients
-                    .FirstOrDefaultAsync(i => i.Name.ToLower() == name.ToLower());
+                var existingIng = await _db.Ingredients.FirstOrDefaultAsync(i => i.Name.ToLower() == name.ToLower());
                 if (existingIng == null)
                 {
                     existingIng = new Ingredient
@@ -148,14 +135,32 @@ public class FridgeController : ControllerBase
                 }
                 ingredientId = existingIng.Id;
             }
-            else if (!await _db.Ingredients.AnyAsync(i => i.Id == ingredientId))
+
+            var ingredient = await _db.Ingredients.FindAsync(ingredientId);
+            if (ingredient == null) continue;
+
+            // Update the ingredient's price from this purchase (price for the quantity bought).
+            if (item.Price > 0 && item.Quantity > 0)
             {
-                continue; // skip unknown ingredient id
+                ingredient.PricePerUnit = Math.Round(item.Price / item.Quantity, 4);
+                ingredient.PriceUnit = item.Unit;
             }
 
-            var saved = await AddOrMergeAsync(userId, ingredientId.Value, item.Quantity,
-                item.Unit, item.BestBeforeDate, Source.Receipt);
-            savedItems.Add(saved);
+            await AddOrMergeAsync(userId, ingredient.Id, item.Quantity, item.Unit, Source.Receipt);
+            purchaseTotal += item.Price > 0 ? item.Price : 0;
+            confirmedCount++;
+        }
+
+        // Record the spend event.
+        if (confirmedCount > 0)
+        {
+            _db.Purchases.Add(new Purchase
+            {
+                UserId = userId,
+                PurchasedAt = DateTime.UtcNow,
+                Total = Math.Round(purchaseTotal, 2),
+                ItemCount = confirmedCount
+            });
         }
 
         await _db.SaveChangesAsync();
@@ -163,33 +168,22 @@ public class FridgeController : ControllerBase
         var result = await _db.FridgeItems
             .Where(f => f.UserId == userId)
             .Include(f => f.Ingredient)
-            .OrderBy(f => f.BestBeforeDate)
-            .Select(f => new FridgeItemDto(
-                f.Id, f.IngredientId, f.Ingredient.Name, f.Ingredient.Category,
-                f.Quantity, f.Unit, f.BestBeforeDate, f.AddedAt, f.Source))
+            .OrderBy(f => f.Ingredient.Name)
             .ToListAsync();
 
-        return Ok(result);
+        return Ok(result.Select(ToDto).ToList());
     }
 
     // ---- helpers ----
 
-    private async Task<FridgeItem> AddOrMergeAsync(
-        int userId, int ingredientId, decimal quantity, Unit unit, DateTime bestBefore, Source source)
+    private async Task<FridgeItem> AddOrMergeAsync(int userId, int ingredientId, decimal quantity, Unit unit, Source source)
     {
-        // Postgres 'timestamptz' columns require UTC. Client dates arrive as
-        // Kind=Unspecified, so treat them as UTC.
-        bestBefore = bestBefore.Kind == DateTimeKind.Unspecified
-            ? DateTime.SpecifyKind(bestBefore, DateTimeKind.Utc)
-            : bestBefore.ToUniversalTime();
-
         var existing = await _db.FridgeItems
             .FirstOrDefaultAsync(f => f.UserId == userId && f.IngredientId == ingredientId && f.Unit == unit);
 
         if (existing != null)
         {
             existing.Quantity += quantity;
-            if (bestBefore > existing.BestBeforeDate) existing.BestBeforeDate = bestBefore;
             return existing;
         }
 
@@ -199,7 +193,7 @@ public class FridgeController : ControllerBase
             IngredientId = ingredientId,
             Quantity = quantity,
             Unit = unit,
-            BestBeforeDate = bestBefore,
+            BestBeforeDate = DateTime.UtcNow, // expiry no longer tracked; column retained
             Source = source,
             AddedAt = DateTime.UtcNow
         };
@@ -207,7 +201,13 @@ public class FridgeController : ControllerBase
         return item;
     }
 
-    private static FridgeItemDto ToDto(FridgeItem f) => new(
-        f.Id, f.IngredientId, f.Ingredient.Name, f.Ingredient.Category,
-        f.Quantity, f.Unit, f.BestBeforeDate, f.AddedAt, f.Source);
+    private static FridgeItemDto ToDto(FridgeItem f)
+    {
+        var ing = f.Ingredient;
+        var lineValue = ing == null ? null : CostService.LineCost(ing, f.Quantity, f.Unit);
+        return new FridgeItemDto(
+            f.Id, f.IngredientId, ing?.Name ?? "", ing?.Category ?? "",
+            f.Quantity, f.Unit, f.AddedAt, f.Source,
+            ing?.PricePerUnit, ing?.PriceUnit, lineValue);
+    }
 }

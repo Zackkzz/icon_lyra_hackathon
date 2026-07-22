@@ -47,9 +47,10 @@ public class ReceiptScanService
                     {
                         name = new { type = "string", description = "Human-friendly food/ingredient name, not the raw receipt code." },
                         quantity = new { type = "number", description = "Amount purchased. Use 1 if unknown." },
-                        unit = new { type = "string", @enum = UnitNames, description = "Best-guess unit; use Pieces for whole items." }
+                        unit = new { type = "string", @enum = UnitNames, description = "Best-guess unit; use Pieces for whole items." },
+                        price = new { type = "number", description = "The price printed at the end of this line (total paid for the item). Use 0 if not visible." }
                     },
-                    required = new[] { "name", "quantity", "unit" },
+                    required = new[] { "name", "quantity", "unit", "price" },
                     additionalProperties = false
                 }
             }
@@ -68,6 +69,7 @@ public class ReceiptScanService
         [JsonPropertyName("name")] public string Name { get; set; } = "";
         [JsonPropertyName("quantity")] public decimal Quantity { get; set; } = 1;
         [JsonPropertyName("unit")] public string Unit { get; set; } = "Pieces";
+        [JsonPropertyName("price")] public decimal Price { get; set; }
     }
 
     public async Task<List<ParsedReceiptItemDto>> ScanAsync(string imageBase64)
@@ -95,13 +97,15 @@ public class ReceiptScanService
             "- If a weight is given as a range (e.g. '1.3kg-1.7kg'), use the midpoint as a decimal (1.5).\n" +
             "- Decimals are allowed for quantity.\n" +
             "- Use a short, clean ingredient name ('Chicken Breast', 'Eggs', 'Butter', 'Spinach', 'Cherry Tomatoes', 'Milk', 'Greek Yoghurt', 'Feta').\n\n" +
+            "PRICE\n" +
+            "- Capture the price printed at the end of each line as `price` (the total paid for that item). Use 0 only if no price is visible.\n\n" +
             "EXAMPLES (a '/' marks where the line wrapped)\n" +
-            "'1 Salted Butter 500g            $7.00'                          -> { name: 'Butter', quantity: 500, unit: 'Grams' }\n" +
-            "'2 Baby Leaf Spinach 120g        $3.30'                          -> { name: 'Spinach', quantity: 240, unit: 'Grams' }\n" +
-            "'1 Full Cream Milk 2L            $3.55'                          -> { name: 'Milk', quantity: 2, unit: 'Litres' }\n" +
-            "'1 Simply Eggs 12 Extra Large / Cage Free Eggs 700g   $6.00'     -> { name: 'Eggs', quantity: 12, unit: 'Pieces' }\n" +
-            "'1 Chicken Breast Fillet 1.3kg / 1.7kg               $18.70'     -> { name: 'Chicken Breast', quantity: 1.5, unit: 'Kilograms' }\n" +
-            "'1 Greek Style / Fetta 200g      $3.20'                          -> { name: 'Feta', quantity: 200, unit: 'Grams' }";
+            "'1 Salted Butter 500g            $7.00'                          -> { name: 'Butter', quantity: 500, unit: 'Grams', price: 7.00 }\n" +
+            "'2 Baby Leaf Spinach 120g        $3.30'                          -> { name: 'Spinach', quantity: 240, unit: 'Grams', price: 3.30 }\n" +
+            "'1 Full Cream Milk 2L            $3.55'                          -> { name: 'Milk', quantity: 2, unit: 'Litres', price: 3.55 }\n" +
+            "'1 Simply Eggs 12 Extra Large / Cage Free Eggs 700g   $6.00'     -> { name: 'Eggs', quantity: 12, unit: 'Pieces', price: 6.00 }\n" +
+            "'1 Chicken Breast Fillet 1.3kg / 1.7kg               $18.70'     -> { name: 'Chicken Breast', quantity: 1.5, unit: 'Kilograms', price: 18.70 }\n" +
+            "'1 Greek Style / Fetta 200g      $3.20'                          -> { name: 'Feta', quantity: 200, unit: 'Grams', price: 3.20 }";
 
         var messages = new List<object>
         {
@@ -131,7 +135,6 @@ public class ReceiptScanService
             .Select(i => new { i.Id, i.Name, i.Category })
             .ToListAsync();
 
-        var defaultBestBefore = DateTime.UtcNow.Date.AddDays(7);
         var parsed = new List<ParsedReceiptItemDto>();
 
         foreach (var item in result.Items)
@@ -141,6 +144,7 @@ public class ReceiptScanService
 
             var unit = Enum.TryParse<Unit>(item.Unit, true, out var u) ? u : Unit.Pieces;
             var qty = item.Quantity <= 0 ? 1 : item.Quantity;
+            var price = item.Price < 0 ? 0 : item.Price;
 
             // Best-effort match to a known ingredient: exact, then contains either direction.
             var match =
@@ -156,7 +160,7 @@ public class ReceiptScanService
                 Category: match?.Category ?? "Other",
                 Quantity: qty,
                 Unit: unit,
-                BestBeforeDate: defaultBestBefore
+                Price: price
             ));
         }
 

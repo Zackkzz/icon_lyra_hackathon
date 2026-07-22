@@ -21,6 +21,10 @@ public class CookedMeal
 
     public int Portions { get; set; }
 
+    // Ingredient cost of this prep, computed at cook time from ingredient prices.
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal Cost { get; set; }
+
     public DateTime CookedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey(nameof(RecipeId))]
