@@ -52,8 +52,14 @@ export default function PlanScreen() {
 
   const dayRefs = useRef<Array<View | null>>([]);
   const dayRects = useRef<Array<Rect | null>>([]);
+  // Latest values read by the (stable) drag callbacks, so the gesture never
+  // captures a stale render and never has to be recreated mid-drag.
+  const draggingRef = useRef<CookedMeal | null>(null);
+  const daysRef = useRef<Date[]>([]);
+  const assignRef = useRef<(date: Date, meal: CookedMeal) => void>(() => {});
 
   const days = weekDates(weekStart);
+  daysRef.current = days;
   const weekIso = toISODate(weekStart);
   const availableMeals = cookedMeals.filter((m) => m.portionsAvailable > 0);
   // What the meals planned this week cost in ingredients.
@@ -111,23 +117,30 @@ export default function PlanScreen() {
     return null;
   }
 
-  const onDragStart = (meal: CookedMeal, x: number, y: number) => {
+  const onDragStart = useCallback((meal: CookedMeal, x: number, y: number) => {
     measureAll();
     dragPos.setValue({ x, y });
+    draggingRef.current = meal;
     setDragging(meal);
     setHovered(null);
-  };
-  const onDragMove = (x: number, y: number) => {
+  }, []);
+  const onDragMove = useCallback((x: number, y: number) => {
     dragPos.setValue({ x, y });
     setHovered(hitTest(x, y));
-  };
-  const onDragEnd = (x: number, y: number) => {
+  }, []);
+  const onDragEnd = useCallback((x: number, y: number) => {
+    const meal = draggingRef.current;
     const idx = hitTest(x, y);
-    const meal = dragging;
+    draggingRef.current = null;
     setDragging(null);
     setHovered(null);
-    if (idx != null && meal) assign(days[idx], meal);
-  };
+    if (idx != null && meal) assignRef.current(daysRef.current[idx], meal);
+  }, []);
+  const onDragCancel = useCallback(() => {
+    draggingRef.current = null;
+    setDragging(null);
+    setHovered(null);
+  }, []);
 
   async function assign(date: Date, meal: CookedMeal) {
     if (meal.portionsAvailable <= 0) return;
@@ -162,6 +175,8 @@ export default function PlanScreen() {
       Alert.alert("Couldn't add to plan", e?.message ?? "Try again.");
     }
   }
+  // Keep the stable onDragEnd pointing at the freshest assign (latest plans).
+  assignRef.current = assign;
 
   async function removePlan(plan: MealPlan) {
     setPlans((prev) => prev.filter((p) => p.id !== plan.id));
@@ -309,6 +324,7 @@ export default function PlanScreen() {
                     onStart={onDragStart}
                     onMove={onDragMove}
                     onEnd={onDragEnd}
+                    onCancel={onDragCancel}
                   />
                 ))}
               </ScrollView>

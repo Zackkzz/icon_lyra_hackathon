@@ -2,15 +2,15 @@ import "../global.css";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "../lib/auth";
 import { colors } from "../lib/theme";
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.canvas }}>
+      <SafeAreaProvider>
+        <AuthProvider>
           <StatusBar style="dark" />
           <Stack
             screenOptions={{
@@ -19,8 +19,8 @@ export default function RootLayout() {
               animation: "fade",
             }}
           />
-        </View>
-      </AuthProvider>
-    </SafeAreaProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
