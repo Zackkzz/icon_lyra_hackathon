@@ -3,16 +3,16 @@ import { View, Text, ScrollView, RefreshControl, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { api, FridgeSuggestions, RecipeSummary } from "../../services/api";
+import { api, RecipeGroups, RecipeSummary } from "../../services/api";
 import { colors } from "../../lib/theme";
 import RecipeCard from "../../components/RecipeCard";
 import RecipeDetail from "../../components/RecipeDetail";
 import { Button, SectionHeader, CenterState } from "../../components/ui";
 
-const EMPTY: FridgeSuggestions = { cookFirst: [], canCook: [], almostCanCook: [] };
+const EMPTY: RecipeGroups = { bookmarked: [], canCook: [], more: [] };
 
 export default function RecipesScreen() {
-  const [data, setData] = useState<FridgeSuggestions>(EMPTY);
+  const [data, setData] = useState<RecipeGroups>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -20,7 +20,7 @@ export default function RecipesScreen() {
 
   const load = useCallback(async () => {
     try {
-      setData(await api.getFridgeSuggestions());
+      setData(await api.getRecipeGroups());
     } catch (e: any) {
       Alert.alert("Couldn't load recipes", e?.message ?? "Try again.");
     } finally {
@@ -33,7 +33,6 @@ export default function RecipesScreen() {
     load();
   }, [load]);
 
-  // Refresh when returning to the tab (fridge may have changed).
   useFocusEffect(
     useCallback(() => {
       load();
@@ -45,7 +44,7 @@ export default function RecipesScreen() {
       setGenerating(true);
       const created = await api.generateRecipes(3);
       await load();
-      Alert.alert("Recipes ready", `Generated ${created.length} recipe${created.length === 1 ? "" : "s"} from your soon-to-expire ingredients.`);
+      Alert.alert("Recipes ready", `Generated ${created.length} new recipe${created.length === 1 ? "" : "s"}.`);
     } catch (e: any) {
       Alert.alert("Generation failed", e?.message ?? "Try again.");
     } finally {
@@ -53,21 +52,28 @@ export default function RecipesScreen() {
     }
   }
 
-  const openDetail = (r: RecipeSummary) => setDetailId(r.id);
+  async function toggleBookmark(r: RecipeSummary) {
+    // optimistic move between sections happens on reload
+    try {
+      await api.toggleBookmark(r.id);
+      load();
+    } catch (e: any) {
+      Alert.alert("Couldn't update bookmark", e?.message ?? "Try again.");
+    }
+  }
 
-  const isEmpty =
-    data.cookFirst.length === 0 && data.canCook.length === 0 && data.almostCanCook.length === 0;
+  const isEmpty = data.bookmarked.length === 0 && data.canCook.length === 0 && data.more.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
       <View className="px-5 pt-2 pb-3">
         <Text className="text-ink text-2xl font-extrabold">Recipes</Text>
-        <Text className="text-ink/50 text-xs">Built around what's in your fridge</Text>
+        <Text className="text-ink/50 text-xs">See what each meal costs per serving</Text>
       </View>
 
       <View className="px-5 mb-1">
         <Button
-          label={generating ? "Generating…" : "Generate recipes to use expiring food"}
+          label={generating ? "Generating…" : "Generate new recipes"}
           onPress={generate}
           loading={generating}
           icon={<Ionicons name="sparkles" size={16} color={colors.canvas} />}
@@ -95,48 +101,34 @@ export default function RecipesScreen() {
           {isEmpty ? (
             <CenterState>
               <Ionicons name="restaurant-outline" size={44} color={colors.ink + "40"} />
-              <Text className="text-ink/60 font-semibold mt-3">No matches yet</Text>
-              <Text className="text-ink/40 text-center mt-1">
-                Add items to your fridge, then generate recipes to make the most of them.
-              </Text>
+              <Text className="text-ink/60 font-semibold mt-3">No recipes yet</Text>
+              <Text className="text-ink/40 text-center mt-1">Generate recipes to see their cost per serving.</Text>
             </CenterState>
           ) : (
             <>
-              {data.cookFirst.length > 0 && (
+              {data.bookmarked.length > 0 && (
                 <View className="gap-2.5">
-                  <SectionHeader
-                    title="Cook these first"
-                    subtitle="Uses ingredients about to expire"
-                    accentColor={colors.warning}
-                  />
-                  {data.cookFirst.map((r) => (
-                    <RecipeCard key={`cf-${r.id}`} recipe={r} onPress={() => openDetail(r)} showExpiring />
+                  <SectionHeader title="Saved" subtitle="Recipes you bookmarked" accentColor={colors.accent} />
+                  {data.bookmarked.map((r) => (
+                    <RecipeCard key={`bm-${r.id}`} recipe={r} onPress={() => setDetailId(r.id)} onToggleBookmark={toggleBookmark} />
                   ))}
                 </View>
               )}
 
               {data.canCook.length > 0 && (
                 <View className="gap-2.5">
-                  <SectionHeader
-                    title="Ready to cook"
-                    subtitle="You have every ingredient"
-                    accentColor={colors.success}
-                  />
+                  <SectionHeader title="Ready to cook" subtitle="You have every ingredient · cheapest first" accentColor={colors.success} />
                   {data.canCook.map((r) => (
-                    <RecipeCard key={`cc-${r.id}`} recipe={r} onPress={() => openDetail(r)} />
+                    <RecipeCard key={`cc-${r.id}`} recipe={r} onPress={() => setDetailId(r.id)} onToggleBookmark={toggleBookmark} />
                   ))}
                 </View>
               )}
 
-              {data.almostCanCook.length > 0 && (
+              {data.more.length > 0 && (
                 <View className="gap-2.5">
-                  <SectionHeader
-                    title="Almost there"
-                    subtitle="70%+ of ingredients on hand"
-                    accentColor={colors.info}
-                  />
-                  {data.almostCanCook.map((r) => (
-                    <RecipeCard key={`ac-${r.id}`} recipe={r} onPress={() => openDetail(r)} />
+                  <SectionHeader title="More recipes" subtitle="Sorted by what you have on hand" accentColor={colors.info} />
+                  {data.more.map((r) => (
+                    <RecipeCard key={`mo-${r.id}`} recipe={r} onPress={() => setDetailId(r.id)} onToggleBookmark={toggleBookmark} />
                   ))}
                 </View>
               )}
@@ -150,6 +142,7 @@ export default function RecipesScreen() {
         visible={detailId != null}
         onClose={() => setDetailId(null)}
         onCooked={load}
+        onChanged={load}
       />
     </SafeAreaView>
   );

@@ -8,11 +8,11 @@ import { colors } from "../lib/theme";
 export default function RecipeCard({
   recipe,
   onPress,
-  showExpiring,
+  onToggleBookmark,
 }: {
   recipe: RecipeSummary;
   onPress: () => void;
-  showExpiring?: boolean;
+  onToggleBookmark: (r: RecipeSummary) => void;
 }) {
   return (
     <Pressable onPress={onPress} className="bg-ink/5 border border-ink/10 rounded-2xl p-4 gap-3 active:opacity-70">
@@ -33,36 +33,38 @@ export default function RecipeCard({
             {recipe.description}
           </Text>
         </View>
-        <View className="items-center">
-          <Text className="text-ink font-extrabold text-lg leading-5">{Math.round(recipe.matchPercentage)}%</Text>
-          <Text className="text-ink/40 text-[10px]">have</Text>
+        <View className="items-end gap-1">
+          {recipe.costPerServing != null ? (
+            <>
+              <Text className="text-accent font-extrabold text-lg leading-5">${recipe.costPerServing.toFixed(2)}</Text>
+              <Text className="text-ink/40 text-[10px]">per serving</Text>
+            </>
+          ) : (
+            <Text className="text-ink/30 text-xs">no price</Text>
+          )}
         </View>
       </View>
 
       <MatchBar pct={recipe.matchPercentage} />
 
-      <View className="flex-row items-center gap-3">
-        <View className="flex-row items-center gap-1">
-          <Ionicons name="time-outline" size={13} color={colors.ink + "80"} />
-          <Text className="text-ink/60 text-xs">{recipe.prepTimeMinutes} min</Text>
-        </View>
-        <View className="flex-row items-center gap-1">
-          <Ionicons name="people-outline" size={13} color={colors.ink + "80"} />
-          <Text className="text-ink/60 text-xs">{recipe.servings}</Text>
-        </View>
-        <Text className="text-ink/60 text-xs">
-          {recipe.matchCount}/{recipe.totalIngredients} ingredients
-        </Text>
-      </View>
-
-      {showExpiring && recipe.expiringIngredients.length > 0 ? (
-        <View className="flex-row items-center gap-1.5 flex-wrap">
-          <Ionicons name="alert-circle" size={13} color={colors.warning} />
-          <Text className="text-warning text-xs font-semibold">
-            Uses {recipe.expiringIngredients.join(", ")}
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-3">
+          <View className="flex-row items-center gap-1">
+            <Ionicons name="time-outline" size={13} color={colors.ink + "80"} />
+            <Text className="text-ink/60 text-xs">{recipe.prepTimeMinutes} min</Text>
+          </View>
+          <Text className="text-ink/60 text-xs">
+            {recipe.matchCount}/{recipe.totalIngredients} in pantry
           </Text>
         </View>
-      ) : null}
+        <Pressable onPress={() => onToggleBookmark(recipe)} hitSlop={10} className="p-1">
+          <Ionicons
+            name={recipe.isBookmarked ? "bookmark" : "bookmark-outline"}
+            size={18}
+            color={recipe.isBookmarked ? colors.accent : colors.ink + "80"}
+          />
+        </Pressable>
+      </View>
     </Pressable>
   );
 }

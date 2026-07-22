@@ -6,6 +6,7 @@ import { colors } from "../lib/theme";
 import { Button } from "./ui";
 
 function IngredientRow({ ing, scale }: { ing: RecipeIngredient; scale: number }) {
+  const cost = ing.lineCost != null ? ing.lineCost * scale : null;
   return (
     <View className="flex-row items-center justify-between py-2 border-b border-ink/5">
       <View className="flex-row items-center gap-2 flex-1">
@@ -18,9 +19,16 @@ function IngredientRow({ ing, scale }: { ing: RecipeIngredient; scale: number })
           {ing.ingredientName}
         </Text>
       </View>
-      <Text className="text-ink/50 text-xs">
-        {formatQty(ing.quantity * scale)} {ing.unit}
-      </Text>
+      <View className="flex-row items-center gap-3">
+        <Text className="text-ink/50 text-xs">
+          {formatQty(ing.quantity * scale)} {ing.unit}
+        </Text>
+        {cost != null ? (
+          <Text className="text-ink/70 text-xs font-semibold w-12 text-right">${cost.toFixed(2)}</Text>
+        ) : (
+          <Text className="text-ink/25 text-xs w-12 text-right">—</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -30,16 +38,19 @@ export default function RecipeDetail({
   visible,
   onClose,
   onCooked,
+  onChanged,
 }: {
   recipeId: number | null;
   visible: boolean;
   onClose: () => void;
   onCooked?: () => void;
+  onChanged?: () => void;
 }) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(false);
   const [portions, setPortions] = useState(2);
   const [cooking, setCooking] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
 
   useEffect(() => {
     if (!visible || recipeId == null) return;
@@ -49,25 +60,38 @@ export default function RecipeDetail({
       .getRecipe(recipeId)
       .then((r) => {
         setRecipe(r);
+        setBookmarked(r.isBookmarked);
         setPortions(r.servings > 0 ? r.servings : 2);
       })
       .catch(() => setRecipe(null))
       .finally(() => setLoading(false));
   }, [visible, recipeId]);
 
+  async function toggleBookmark() {
+    if (!recipe) return;
+    const next = !bookmarked;
+    setBookmarked(next); // optimistic
+    try {
+      await api.toggleBookmark(recipe.id);
+      onChanged?.();
+    } catch {
+      setBookmarked(!next);
+    }
+  }
+
   async function cook() {
     if (!recipe) return;
     try {
       setCooking(true);
-      await api.cookRecipe(recipe.id, portions);
+      const res = await api.cookRecipe(recipe.id, portions);
       onCooked?.();
       onClose();
       Alert.alert(
-        "Cooked!",
-        `${portions} portion${portions === 1 ? "" : "s"} of ${recipe.name} added. Plan them in the Plan tab.`
+        "Prepped!",
+        `${portions} portion${portions === 1 ? "" : "s"} of ${recipe.name} — ingredient cost $${res.cost.toFixed(2)}. Ingredients removed from your pantry.`
       );
     } catch (e: any) {
-      Alert.alert("Couldn't cook", e?.message ?? "Try again.");
+      Alert.alert("Couldn't prep", e?.message ?? "Try again.");
     } finally {
       setCooking(false);
     }
@@ -86,10 +110,15 @@ export default function RecipeDetail({
             <View className="flex-1 pr-3">
               <Text className="text-ink text-xl font-extrabold">{recipe?.name ?? "Recipe"}</Text>
               {recipe ? (
-                <View className="flex-row items-center gap-3 mt-1">
+                <View className="flex-row items-center gap-2 mt-1 flex-wrap">
                   <Text className="text-ink/50 text-xs">{recipe.prepTimeMinutes} min</Text>
                   <Text className="text-ink/50 text-xs">·</Text>
-                  <Text className="text-ink/50 text-xs">recipe serves {recipe.servings}</Text>
+                  <Text className="text-ink/50 text-xs">serves {recipe.servings}</Text>
+                  {recipe.costPerServing != null ? (
+                    <View className="bg-accent/15 px-1.5 py-0.5 rounded-full">
+                      <Text className="text-accent text-[11px] font-bold">${recipe.costPerServing.toFixed(2)}/serving</Text>
+                    </View>
+                  ) : null}
                   {recipe.isAiGenerated ? (
                     <View className="flex-row items-center gap-1 bg-accent/15 px-1.5 py-0.5 rounded-full">
                       <Ionicons name="sparkles" size={10} color={colors.accent} />
@@ -99,9 +128,16 @@ export default function RecipeDetail({
                 </View>
               ) : null}
             </View>
-            <Pressable onPress={onClose} hitSlop={10} className="w-9 h-9 rounded-full bg-ink/10 items-center justify-center">
-              <Ionicons name="close" size={18} color={colors.ink} />
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              {recipe ? (
+                <Pressable onPress={toggleBookmark} hitSlop={8} className="w-9 h-9 rounded-full bg-ink/10 items-center justify-center">
+                  <Ionicons name={bookmarked ? "bookmark" : "bookmark-outline"} size={17} color={bookmarked ? colors.accent : colors.ink} />
+                </Pressable>
+              ) : null}
+              <Pressable onPress={onClose} hitSlop={10} className="w-9 h-9 rounded-full bg-ink/10 items-center justify-center">
+                <Ionicons name="close" size={18} color={colors.ink} />
+              </Pressable>
+            </View>
           </View>
 
           {loading || !recipe ? (
@@ -116,7 +152,7 @@ export default function RecipeDetail({
 
               <View className="bg-info/10 border border-info/25 rounded-xl px-3 py-2">
                 <Text className="text-info text-xs">
-                  Ingredient amounts below are for {portions} portion{portions === 1 ? "" : "s"} (this recipe serves {recipe.servings}). Cooking removes them from your fridge.
+                  Ingredient amounts and costs below are for {portions} portion{portions === 1 ? "" : "s"} (this recipe serves {recipe.servings}). Cooking removes them from your pantry.
                 </Text>
               </View>
 
@@ -124,7 +160,7 @@ export default function RecipeDetail({
               <View>
                 <View className="flex-row items-center gap-2 mb-1">
                   <Ionicons name="checkmark-circle" size={15} color={colors.success} />
-                  <Text className="text-success font-bold text-sm">In your fridge ({have.length})</Text>
+                  <Text className="text-success font-bold text-sm">In your pantry ({have.length})</Text>
                 </View>
                 {have.length ? (
                   have.map((i) => <IngredientRow key={i.ingredientId} ing={i} scale={scale} />)

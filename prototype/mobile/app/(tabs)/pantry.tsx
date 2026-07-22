@@ -11,21 +11,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import {
-  api,
-  FridgeItem,
-  ConfirmReceiptItem,
-} from "../../services/api";
+import { api, PantryItem, ConfirmReceiptItem } from "../../services/api";
 import { useAuth } from "../../lib/auth";
 import { colors } from "../../lib/theme";
-import { toISODate, addDays } from "../../lib/date";
-import ExpiryBadge from "../../components/ExpiryBadge";
 import ReceiptReview from "../../components/ReceiptReview";
 import { Button, CenterState } from "../../components/ui";
 
-export default function FridgeScreen() {
+export default function PantryScreen() {
   const { signOut } = useAuth();
-  const [items, setItems] = useState<FridgeItem[]>([]);
+  const [items, setItems] = useState<PantryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -38,9 +32,9 @@ export default function FridgeScreen() {
 
   const load = useCallback(async () => {
     try {
-      setItems(await api.getFridge());
+      setItems(await api.getPantry());
     } catch (e: any) {
-      Alert.alert("Couldn't load fridge", e?.message ?? "Try again.");
+      Alert.alert("Couldn't load pantry", e?.message ?? "Try again.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,11 +74,11 @@ export default function FridgeScreen() {
           category: p.category,
           quantity: p.quantity,
           unit: p.unit,
-          bestBeforeDate: p.bestBeforeDate,
+          price: p.price,
         }))
       );
       setReviewTitle("Review receipt");
-      setReviewSubtitle(`${parsed.length} item${parsed.length === 1 ? "" : "s"} found — edit before adding`);
+      setReviewSubtitle(`${parsed.length} item${parsed.length === 1 ? "" : "s"} — check prices before adding`);
       setReviewVisible(true);
     } catch (e: any) {
       Alert.alert("Scan failed", e?.message ?? "Try again.");
@@ -95,17 +89,10 @@ export default function FridgeScreen() {
 
   function addManually() {
     setReviewItems([
-      {
-        ingredientId: null,
-        name: "",
-        category: "Other",
-        quantity: 1,
-        unit: "Pieces",
-        bestBeforeDate: toISODate(addDays(new Date(), 7)),
-      },
+      { ingredientId: null, name: "", category: "Other", quantity: 1, unit: "Pieces", price: 0 },
     ]);
     setReviewTitle("Add items");
-    setReviewSubtitle("Add groceries to your fridge");
+    setReviewSubtitle("Add groceries and their prices");
     setReviewVisible(true);
   }
 
@@ -122,29 +109,32 @@ export default function FridgeScreen() {
     }
   }
 
-  async function deleteItem(item: FridgeItem) {
+  async function deleteItem(item: PantryItem) {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
     try {
-      await api.deleteFridgeItem(item.id);
+      await api.deletePantryItem(item.id);
     } catch {
       load();
     }
   }
 
+  const totalValue = items.reduce((s, i) => s + (i.lineValue ?? 0), 0);
+
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
-      {/* header */}
       <View className="px-5 pt-2 pb-3 flex-row items-center justify-between">
         <View>
-          <Text className="text-ink text-2xl font-extrabold">Fridge</Text>
-          <Text className="text-ink/50 text-xs">{items.length} item{items.length === 1 ? "" : "s"}</Text>
+          <Text className="text-ink text-2xl font-extrabold">Pantry</Text>
+          <Text className="text-ink/50 text-xs">
+            {items.length} item{items.length === 1 ? "" : "s"}
+            {totalValue > 0 ? ` · ~$${totalValue.toFixed(2)} on hand` : ""}
+          </Text>
         </View>
         <Pressable onPress={signOut} hitSlop={8} className="w-10 h-10 rounded-full bg-ink/10 items-center justify-center">
           <Ionicons name="log-out-outline" size={18} color={colors.ink} />
         </Pressable>
       </View>
 
-      {/* actions */}
       <View className="px-5 flex-row gap-3 mb-2">
         <View className="flex-1">
           <Button
@@ -183,9 +173,9 @@ export default function FridgeScreen() {
           }
           ListEmptyComponent={
             <CenterState>
-              <Ionicons name="snow-outline" size={44} color={colors.ink + "40"} />
-              <Text className="text-ink/60 font-semibold mt-3">Your fridge is empty</Text>
-              <Text className="text-ink/40 text-center mt-1">Scan a receipt or add items to get started.</Text>
+              <Ionicons name="basket-outline" size={44} color={colors.ink + "40"} />
+              <Text className="text-ink/60 font-semibold mt-3">Your pantry is empty</Text>
+              <Text className="text-ink/40 text-center mt-1">Scan a receipt to add items and capture their prices.</Text>
             </CenterState>
           }
           renderItem={({ item }) => (
@@ -201,10 +191,15 @@ export default function FridgeScreen() {
                 </View>
                 <Text className="text-ink/50 text-xs mt-0.5">
                   {item.category} · {formatQty(item.quantity)} {item.unit}
+                  {item.unitPrice != null ? ` · $${item.unitPrice.toFixed(item.unitPrice < 1 ? 3 : 2)}/${item.priceUnit}` : ""}
                 </Text>
               </View>
               <View className="items-end gap-2">
-                <ExpiryBadge bestBeforeDate={item.bestBeforeDate} />
+                {item.lineValue != null ? (
+                  <Text className="text-accent font-bold text-sm">${item.lineValue.toFixed(2)}</Text>
+                ) : (
+                  <Text className="text-ink/30 text-xs">no price</Text>
+                )}
                 <Pressable onPress={() => deleteItem(item)} hitSlop={8}>
                   <Ionicons name="trash-outline" size={16} color={colors.error} />
                 </Pressable>

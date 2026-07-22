@@ -13,7 +13,6 @@ import { ConfirmReceiptItem, Unit } from "../services/api";
 import { Button } from "./ui";
 import UnitPicker from "./UnitPicker";
 import { colors } from "../lib/theme";
-import { addDays, toISODate, toDateOnly, addDaysIso, daysUntil, formatFriendly } from "../lib/date";
 
 type Draft = ConfirmReceiptItem & { key: string };
 
@@ -21,8 +20,7 @@ let keySeq = 0;
 const newKey = () => `d${keySeq++}`;
 
 function toDraft(items: ConfirmReceiptItem[]): Draft[] {
-  // Normalise any full ISO timestamp to a plain calendar date up front.
-  return items.map((i) => ({ ...i, bestBeforeDate: toDateOnly(i.bestBeforeDate), key: newKey() }));
+  return items.map((i) => ({ ...i, key: newKey() }));
 }
 
 // Sensible +/- increment per unit so decimal metrics (kg, L) are easy to tune.
@@ -74,7 +72,7 @@ export default function ReceiptReview({
         category: "Other",
         quantity: 1,
         unit: "Pieces" as Unit,
-        bestBeforeDate: toISODate(addDays(new Date(), 7)),
+        price: 0,
       },
     ]);
   }
@@ -85,6 +83,9 @@ export default function ReceiptReview({
       .map(({ key, ...rest }) => ({ ...rest, name: rest.name.trim() }));
     onConfirm(cleaned);
   }
+
+  const total = drafts.reduce((s, d) => s + (d.name.trim() ? d.price || 0 : 0), 0);
+  const validCount = drafts.filter((d) => d.name.trim()).length;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
@@ -106,7 +107,7 @@ export default function ReceiptReview({
               <Text className="text-ink/50 text-center py-8">No items. Add one below.</Text>
             ) : (
               drafts.map((d) => {
-                const days = daysUntil(d.bestBeforeDate);
+                const unitPrice = d.quantity > 0 && d.price > 0 ? d.price / d.quantity : null;
                 return (
                   <View key={d.key} className="bg-ink/5 border border-ink/10 rounded-2xl p-3 gap-2.5">
                     <View className="flex-row items-center gap-2">
@@ -149,26 +150,25 @@ export default function ReceiptReview({
                       </View>
                     </View>
 
-                    {/* best before stepper */}
+                    {/* price */}
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-ink/50 text-xs">Best before</Text>
                       <View className="flex-row items-center gap-2">
-                        <Pressable
-                          onPress={() => update(d.key, { bestBeforeDate: addDaysIso(d.bestBeforeDate, -1) })}
-                          className="w-7 h-7 rounded-full bg-ink/10 items-center justify-center"
-                        >
-                          <Ionicons name="remove" size={14} color={colors.ink} />
-                        </Pressable>
-                        <Text className="text-ink font-semibold text-sm w-32 text-center">
-                          {formatFriendly(d.bestBeforeDate)} · {days}d
-                        </Text>
-                        <Pressable
-                          onPress={() => update(d.key, { bestBeforeDate: addDaysIso(d.bestBeforeDate, 1) })}
-                          className="w-7 h-7 rounded-full bg-ink/10 items-center justify-center"
-                        >
-                          <Ionicons name="add" size={14} color={colors.ink} />
-                        </Pressable>
+                        <Text className="text-ink/50 text-xs">Price paid</Text>
+                        <View className="flex-row items-center bg-ink/5 rounded-xl border border-ink/10 px-2">
+                          <Text className="text-ink/60 font-bold">$</Text>
+                          <TextInput
+                            value={d.price ? String(d.price) : ""}
+                            onChangeText={(t) => update(d.key, { price: parseFloat(t) || 0 })}
+                            keyboardType="decimal-pad"
+                            placeholder="0.00"
+                            placeholderTextColor={colors.ink + "55"}
+                            className="text-ink font-bold w-16 text-center py-2"
+                          />
+                        </View>
                       </View>
+                      {unitPrice != null ? (
+                        <Text className="text-ink/40 text-xs">${unitPrice.toFixed(3)}/{d.unit}</Text>
+                      ) : null}
                     </View>
                   </View>
                 );
@@ -179,11 +179,14 @@ export default function ReceiptReview({
           </ScrollView>
 
           <View className="px-5 pt-2 gap-2">
+            {total > 0 ? (
+              <Text className="text-ink/60 text-sm text-center">Receipt total: ${total.toFixed(2)}</Text>
+            ) : null}
             <Button
-              label={`Add ${drafts.filter((d) => d.name.trim()).length} to fridge`}
+              label={`Add ${validCount} to pantry`}
               onPress={confirm}
               loading={loading}
-              disabled={drafts.filter((d) => d.name.trim()).length === 0}
+              disabled={validCount === 0}
             />
           </View>
         </View>

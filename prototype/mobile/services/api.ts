@@ -30,9 +30,6 @@ export const UNITS: Unit[] = [
   "Pounds",
 ];
 
-export type MealType = "Breakfast" | "Lunch" | "Dinner" | "Snack";
-export const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
-
 export type Source = "Receipt" | "Manual";
 
 // ---- Auth ----
@@ -44,25 +41,26 @@ export interface AuthResponse {
   displayName: string;
 }
 
-// ---- Fridge ----
+// ---- Pantry ----
 
-export interface FridgeItem {
+export interface PantryItem {
   id: number;
   ingredientId: number;
   ingredientName: string;
   category: string;
   quantity: number;
   unit: Unit;
-  bestBeforeDate: string;
   addedAt: string;
   source: Source;
+  unitPrice: number | null; // price per priceUnit
+  priceUnit: Unit | null;
+  lineValue: number | null; // approx value of this stock
 }
 
-export interface AddFridgeRequest {
+export interface AddPantryRequest {
   ingredientId: number;
   quantity: number;
   unit: Unit;
-  bestBeforeDate: string;
   source?: Source;
 }
 
@@ -75,7 +73,7 @@ export interface ParsedReceiptItem {
   category: string;
   quantity: number;
   unit: Unit;
-  bestBeforeDate: string;
+  price: number;
 }
 
 export interface ConfirmReceiptItem {
@@ -84,7 +82,7 @@ export interface ConfirmReceiptItem {
   category: string;
   quantity: number;
   unit: Unit;
-  bestBeforeDate: string;
+  price: number;
 }
 
 // ---- Recipes ----
@@ -96,6 +94,7 @@ export interface RecipeIngredient {
   unit: Unit;
   inFridge: boolean;
   fridgeQuantity: number;
+  lineCost: number | null;
 }
 
 export interface Recipe {
@@ -107,6 +106,10 @@ export interface Recipe {
   prepTimeMinutes: number;
   imageUrl: string | null;
   isAiGenerated: boolean;
+  isBookmarked: boolean;
+  costPerServing: number | null;
+  totalCost: number | null;
+  pricedIngredients: number;
   ingredients: RecipeIngredient[];
 }
 
@@ -118,17 +121,17 @@ export interface RecipeSummary {
   prepTimeMinutes: number;
   imageUrl: string | null;
   isAiGenerated: boolean;
+  isBookmarked: boolean;
+  costPerServing: number | null;
   matchCount: number;
   totalIngredients: number;
   matchPercentage: number;
-  usesExpiring: boolean;
-  expiringIngredients: string[];
 }
 
-export interface FridgeSuggestions {
-  cookFirst: RecipeSummary[];
+export interface RecipeGroups {
+  bookmarked: RecipeSummary[];
   canCook: RecipeSummary[];
-  almostCanCook: RecipeSummary[];
+  more: RecipeSummary[];
 }
 
 // ---- Cooked meals ----
@@ -138,25 +141,30 @@ export interface CookedMeal {
   recipeId: number | null;
   recipeName: string;
   portions: number;
-  portionsAvailable: number;
+  cost: number;
   cookedAt: string;
 }
 
-// ---- Meal plan ----
+// ---- Spending ----
 
-export interface MealPlan {
-  id: number;
-  date: string;
-  mealType: MealType;
-  cookedMealId: number | null;
-  recipeId: number | null;
-  recipeName: string | null;
+export interface PreppedMeal {
+  recipeName: string;
+  portions: number;
+  cost: number;
+  cookedAt: string;
 }
 
-export interface CreateMealPlanRequest {
-  date: string;
-  mealType: MealType;
-  cookedMealId: number;
+export interface WeekSpending {
+  weekStart: string;
+  spent: number;
+  purchaseCount: number;
+  preppedCost: number;
+  mealsPrepped: PreppedMeal[];
+}
+
+export interface SpendingResponse {
+  totalSpent: number;
+  weeks: WeekSpending[];
 }
 
 // ---- Token + request plumbing ----
@@ -213,21 +221,24 @@ export const api = {
     }),
   me: () => request<AuthResponse>("/api/auth/me"),
 
-  // fridge
-  getFridge: () => request<FridgeItem[]>("/api/Fridge"),
-  addToFridge: (body: AddFridgeRequest) =>
-    request<FridgeItem>("/api/Fridge", { method: "POST", body: JSON.stringify(body) }),
-  deleteFridgeItem: (id: number) =>
+  // pantry
+  getPantry: () => request<PantryItem[]>("/api/Fridge"),
+  addToPantry: (body: AddPantryRequest) =>
+    request<PantryItem>("/api/Fridge", { method: "POST", body: JSON.stringify(body) }),
+  deletePantryItem: (id: number) =>
     request<void>(`/api/Fridge/${id}`, { method: "DELETE" }),
-  useFridgeItem: (id: number, quantity: number) =>
-    request<unknown>(`/api/Fridge/${id}/use?quantity=${quantity}`, { method: "PATCH" }),
+  setIngredientPrice: (ingredientId: number, pricePerUnit: number, priceUnit: Unit) =>
+    request<void>(`/api/Fridge/ingredient-price/${ingredientId}`, {
+      method: "PUT",
+      body: JSON.stringify({ pricePerUnit, priceUnit }),
+    }),
   scanReceipt: (imageBase64: string) =>
     request<{ items: ParsedReceiptItem[] }>("/api/Fridge/scan-receipt", {
       method: "POST",
       body: JSON.stringify({ imageBase64 }),
     }),
   confirmReceipt: (items: ConfirmReceiptItem[]) =>
-    request<FridgeItem[]>("/api/Fridge/confirm-receipt", {
+    request<PantryItem[]>("/api/Fridge/confirm-receipt", {
       method: "POST",
       body: JSON.stringify({ items }),
     }),
@@ -235,27 +246,20 @@ export const api = {
   // recipes
   getRecipes: () => request<RecipeSummary[]>("/api/Recipes"),
   getRecipe: (id: number) => request<Recipe>(`/api/Recipes/${id}`),
-  getFridgeSuggestions: () => request<FridgeSuggestions>("/api/Recipes/for-fridge"),
+  getRecipeGroups: () => request<RecipeGroups>("/api/Recipes/for-fridge"),
   generateRecipes: (count = 3) =>
     request<Recipe[]>("/api/Recipes/generate", {
       method: "POST",
       body: JSON.stringify({ count }),
     }),
+  toggleBookmark: (id: number) =>
+    request<{ bookmarked: boolean }>(`/api/Recipes/${id}/bookmark`, { method: "POST" }),
 
-  // cooked meals
-  getCookedMeals: () => request<CookedMeal[]>("/api/CookedMeals"),
+  // cooking + spending
   cookRecipe: (recipeId: number, portions: number) =>
     request<CookedMeal>("/api/CookedMeals", {
       method: "POST",
       body: JSON.stringify({ recipeId, portions }),
     }),
-  deleteCookedMeal: (id: number) =>
-    request<void>(`/api/CookedMeals/${id}`, { method: "DELETE" }),
-
-  // meal plan
-  getMealPlan: (week: string) => request<MealPlan[]>(`/api/MealPlan?week=${week}`),
-  createMealPlan: (body: CreateMealPlanRequest) =>
-    request<MealPlan>("/api/MealPlan", { method: "POST", body: JSON.stringify(body) }),
-  deleteMealPlan: (id: number) =>
-    request<void>(`/api/MealPlan/${id}`, { method: "DELETE" }),
+  getSpending: () => request<SpendingResponse>("/api/Spending"),
 };

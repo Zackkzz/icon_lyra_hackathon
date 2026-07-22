@@ -34,15 +34,6 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="plan"
-        options={{
-          title: "Plan",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar" size={size ?? 22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="recipes"
         options={{
           title: "Recipes",
@@ -52,11 +43,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="fridge"
+        name="pantry"
         options={{
-          title: "Fridge",
+          title: "Pantry",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="snow" size={size ?? 22} color={color} />
+            <Ionicons name="basket" size={size ?? 22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="spending"
+        options={{
+          title: "Spending",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet" size={size ?? 22} color={color} />
           ),
         }}
       />
