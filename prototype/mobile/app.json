@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "FridgeMealPlanner",
+    "slug": "fridge-meal-planner",
+    "version": "1.0.0",
+    "scheme": "fridge-planner",
+    "plugins": ["expo-router"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF8F0"
+      }
+    }
+  }
+}
