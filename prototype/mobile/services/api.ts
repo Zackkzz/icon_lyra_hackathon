@@ -1,7 +1,29 @@
 // Typed API client for the Mealer backend.
 // A bearer token (set by the auth layer) is attached to every request.
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5097";
+import Constants from "expo-constants";
+
+const API_PORT = 5097;
+
+// Resolve the backend base URL.
+// On a physical device via Expo Go, `localhost` points at the phone, not the
+// dev machine — so derive the dev machine's LAN IP from the Metro packager host.
+// An explicit EXPO_PUBLIC_API_URL always wins (e.g. a deployed backend).
+function resolveBaseUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+
+  const hostUri =
+    Constants.expoConfig?.hostUri ??
+    (Constants as any).expoGoConfig?.debuggerHost ??
+    (Constants as any).manifest2?.extra?.expoGo?.developer?.host;
+  const host = hostUri?.split(":")[0];
+  if (host) return `http://${host}:${API_PORT}`;
+
+  // Fallback for web / running on the same machine.
+  return `http://localhost:${API_PORT}`;
+}
+
+const BASE_URL = resolveBaseUrl();
 
 // ---- Domain types ----
 
