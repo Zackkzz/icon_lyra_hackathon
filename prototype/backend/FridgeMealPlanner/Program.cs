@@ -5,6 +5,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+// Load .env into the process environment before anything reads env vars.
+// TraversePath walks up from the working directory, so it finds backend/.env
+// whether you run from the project folder or the backend folder.
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Read connection string from env var or fall back to appsettings
