@@ -1,0 +1,6 @@
+@FridgeMealPlanner_HostAddress = http://localhost:5097
+
+GET {{FridgeMealPlanner_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
