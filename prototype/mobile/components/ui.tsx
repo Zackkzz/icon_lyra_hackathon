@@ -8,7 +8,58 @@ import {
   TextInputProps,
   ViewProps,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../lib/theme";
+
+// ---- Badge ----
+
+export type BadgeTone = "neutral" | "accent" | "success" | "warning" | "error" | "info";
+
+export function Badge({
+  label,
+  tone = "neutral",
+  icon,
+}: {
+  label: string;
+  tone?: BadgeTone;
+  icon?: React.ComponentProps<typeof Ionicons>["name"];
+}) {
+  const containerStyles: Record<BadgeTone, string> = {
+    neutral: "bg-surface border-ink/10",
+    accent: "bg-accent/10 border-accent/25",
+    success: "bg-success/10 border-success/25",
+    warning: "bg-warning/10 border-warning/25",
+    error: "bg-error/10 border-error/25",
+    info: "bg-info/10 border-info/25",
+  };
+  const textStyles: Record<BadgeTone, string> = {
+    neutral: "text-ink/60",
+    accent: "text-accent",
+    success: "text-success",
+    warning: "text-warning",
+    error: "text-error",
+    info: "text-info",
+  };
+  const iconColors: Record<BadgeTone, string> = {
+    neutral: colors.ink + "99",
+    accent: colors.accent,
+    success: colors.success,
+    warning: colors.warning,
+    error: colors.error,
+    info: colors.info,
+  };
+
+  return (
+    <View
+      accessible
+      accessibilityLabel={label}
+      className={`self-start flex-row items-center gap-1 rounded-full border px-2 py-1 ${containerStyles[tone]}`}
+    >
+      {icon ? <Ionicons name={icon} size={11} color={iconColors[tone]} /> : null}
+      <Text className={`text-[10px] font-bold ${textStyles[tone]}`}>{label}</Text>
+    </View>
+  );
+}
 
 // ---- Button ----
 
@@ -36,7 +87,7 @@ export function Button({
     primary: "bg-accent",
     danger: "bg-error/15 border border-error/40",
     ghost: "border border-ink/15",
-    subtle: "bg-ink/10",
+    subtle: "bg-surface border border-ink/10",
   };
   const textStyles: Record<ButtonVariant, string> = {
     primary: "text-canvas",
@@ -72,7 +123,7 @@ export function Card({
   ...rest
 }: ViewProps & { className?: string }) {
   return (
-    <View className={`bg-ink/5 border border-ink/10 rounded-2xl p-4 ${className}`} {...rest}>
+    <View className={`bg-surface border border-ink/5 rounded-2xl p-4 ${className}`} {...rest}>
       {children}
     </View>
   );
@@ -90,7 +141,7 @@ export function Input({
       {label ? <Text className="text-ink/60 text-xs font-semibold uppercase tracking-wide">{label}</Text> : null}
       <TextInput
         placeholderTextColor={colors.ink + "66"}
-        className={`bg-ink/5 border border-ink/15 rounded-xl px-4 py-3 text-ink ${className}`}
+        className={`bg-surface border border-ink/10 rounded-xl px-4 py-3 text-ink ${className}`}
         {...rest}
       />
     </View>

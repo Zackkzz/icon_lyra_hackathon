@@ -1,4 +1,4 @@
-// Typed API client for the FridgeMealPlanner backend.
+// Typed API client for the Mealer backend.
 // A bearer token (set by the auth layer) is attached to every request.
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5097";
@@ -189,6 +189,29 @@ export interface SpendingResponse {
   weeks: WeekSpending[];
 }
 
+export type SpendingPeriod = "day" | "week" | "month";
+
+export interface SpendingTrendPoint {
+  startDate: string;
+  label: string;
+  spent: number;
+  purchaseCount: number;
+  isCurrent: boolean;
+}
+
+export interface SpendingTrendResponse {
+  period: SpendingPeriod;
+  currentPeriodLabel: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  currentSpent: number;
+  previousSpent: number;
+  changePercentage: number | null;
+  visibleTotal: number;
+  currentPurchaseCount: number;
+  points: SpendingTrendPoint[];
+}
+
 // ---- Token + request plumbing ----
 
 let authToken: string | null = null;
@@ -285,6 +308,10 @@ export const api = {
     }),
   getCookedMeals: () => request<CookedMeal[]>("/api/CookedMeals"),
   getSpending: () => request<SpendingResponse>("/api/Spending"),
+  getSpendingTrend: (period: SpendingPeriod, utcOffsetMinutes: number) =>
+    request<SpendingTrendResponse>(
+      `/api/Spending/trend?period=${period}&utcOffsetMinutes=${utcOffsetMinutes}`
+    ),
 
   // meal plan (calendar)
   getMealPlan: (week: string) => request<MealPlan[]>(`/api/MealPlan?week=${week}`),

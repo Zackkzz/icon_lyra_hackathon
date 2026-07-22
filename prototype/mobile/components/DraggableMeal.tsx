@@ -3,6 +3,7 @@ import { PanResponder, Pressable, View, Text, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CookedMeal } from "../services/api";
 import { colors } from "../lib/theme";
+import { Badge } from "./ui";
 
 // A cooked meal chip that can be dragged up into the calendar, OR tapped to select
 // and then tapped onto a day. Horizontal swipes are left to the ScrollView.
@@ -47,23 +48,23 @@ export default function DraggableMeal({
       <Pressable
         onPress={() => onTap(meal)}
         className={`rounded-2xl px-3 py-2.5 w-44 border ${
-          selected ? "bg-accent/20 border-accent" : "bg-ink/10 border-ink/15"
+          selected ? "bg-accent/15 border-accent" : "bg-surface border-ink/10"
         }`}
       >
         <View className="flex-row items-center justify-between mb-0.5">
           <Ionicons name={selected ? "checkmark-circle" : "reorder-three"} size={14} color={selected ? colors.accent : colors.ink + "80"} />
-          <View className="flex-row items-center gap-1 bg-accent/15 px-1.5 py-0.5 rounded-full">
-            <Ionicons name="restaurant" size={10} color={colors.accent} />
-            <Text className="text-accent text-[10px] font-bold">×{meal.portionsAvailable} left</Text>
-          </View>
+          <Badge label={`${meal.portionsAvailable} left`} tone="accent" icon="restaurant-outline" />
         </View>
         <Text className={`font-bold text-sm ${selected ? "text-accent" : "text-ink"}`} numberOfLines={2}>
           {meal.recipeName}
         </Text>
         {meal.portions > 0 && meal.cost > 0 ? (
-          <Text className="text-ink/40 text-[11px] mt-0.5">
-            ${(meal.cost / meal.portions).toFixed(2)}/portion
-          </Text>
+          <View className="flex-row items-center gap-1 mt-1">
+            <Ionicons name="cash-outline" size={11} color={colors.ink + "66"} />
+            <Text className="text-ink/40 text-[11px]">
+              ${(meal.cost / meal.portions).toFixed(2)}/portion
+            </Text>
+          </View>
         ) : null}
       </Pressable>
     </View>

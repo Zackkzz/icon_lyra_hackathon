@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "FridgeMealPlanner",
-    "slug": "fridge-meal-planner",
+    "name": "Mealer",
+    "slug": "mealer",
     "version": "1.0.0",
-    "scheme": "fridge-planner",
+    "scheme": "mealer",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#121011",
     "plugins": [

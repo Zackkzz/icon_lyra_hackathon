@@ -1,10 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { Redirect, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../lib/auth";
 import { Button, Input } from "../components/ui";
-import { colors } from "../lib/theme";
 
 export default function LoginScreen() {
   const { user, signIn, signUp } = useAuth();
@@ -47,11 +45,11 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerClassName="flex-grow justify-center px-6 py-12" keyboardShouldPersistTaps="handled">
         <View className="items-center mb-8">
-          <View className="w-16 h-16 rounded-3xl bg-accent items-center justify-center mb-4">
-            <Ionicons name="snow" size={32} color={colors.canvas} />
+          <View className="w-16 h-16 rounded-3xl bg-accent items-center justify-center mb-4 shadow-sm">
+            <Text className="text-surface text-3xl font-extrabold">M</Text>
           </View>
-          <Text className="text-ink text-2xl font-extrabold">Fridge Planner</Text>
-          <Text className="text-ink/50 mt-1">Cook smart. Waste less.</Text>
+          <Text className="text-ink text-3xl font-extrabold">Mealer</Text>
+          <Text className="text-ink/50 mt-1">Plan meals. Waste less. Spend smarter.</Text>
         </View>
 
         <View className="gap-4">

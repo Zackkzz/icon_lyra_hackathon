@@ -15,7 +15,7 @@ import { api, PantryItem, ConfirmReceiptItem } from "../../services/api";
 import { useAuth } from "../../lib/auth";
 import { colors } from "../../lib/theme";
 import ReceiptReview from "../../components/ReceiptReview";
-import { Button, CenterState } from "../../components/ui";
+import { Badge, Button, CenterState } from "../../components/ui";
 
 export default function PantryScreen() {
   const { signOut } = useAuth();
@@ -130,7 +130,7 @@ export default function PantryScreen() {
             {totalValue > 0 ? ` · ~$${totalValue.toFixed(2)} on hand` : ""}
           </Text>
         </View>
-        <Pressable onPress={signOut} hitSlop={8} className="w-10 h-10 rounded-full bg-ink/10 items-center justify-center">
+        <Pressable onPress={signOut} hitSlop={8} className="w-10 h-10 rounded-xl bg-surface border border-ink/5 items-center justify-center">
           <Ionicons name="log-out-outline" size={18} color={colors.ink} />
         </Pressable>
       </View>
@@ -179,20 +179,24 @@ export default function PantryScreen() {
             </CenterState>
           }
           renderItem={({ item }) => (
-            <View className="bg-ink/5 border border-ink/10 rounded-2xl p-4 flex-row items-center">
+            <View className="bg-surface border border-ink/5 rounded-2xl p-4 flex-row items-center shadow-sm">
               <View className="flex-1 pr-3">
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-ink font-bold text-base" numberOfLines={1}>
-                    {item.ingredientName}
-                  </Text>
-                  {item.source === "Receipt" ? (
-                    <Ionicons name="receipt-outline" size={13} color={colors.ink + "80"} />
-                  ) : null}
-                </View>
-                <Text className="text-ink/50 text-xs mt-0.5">
-                  {item.category} · {formatQty(item.quantity)} {item.unit}
-                  {item.unitPrice != null ? ` · $${item.unitPrice.toFixed(item.unitPrice < 1 ? 3 : 2)}/${item.priceUnit}` : ""}
+                <Text className="text-ink font-bold text-base" numberOfLines={1}>
+                  {item.ingredientName}
                 </Text>
+                <View className="flex-row items-center gap-1 mt-1">
+                  <Ionicons name="cube-outline" size={12} color={colors.ink + "80"} />
+                  <Text className="text-ink/50 text-xs">
+                    {item.category} · {formatQty(item.quantity)} {item.unit}
+                  {item.unitPrice != null ? ` · $${item.unitPrice.toFixed(item.unitPrice < 1 ? 3 : 2)}/${item.priceUnit}` : ""}
+                  </Text>
+                </View>
+                <View className="mt-2">
+                  <Badge
+                    label={item.source === "Receipt" ? "Receipt" : "Manual"}
+                    icon={item.source === "Receipt" ? "receipt-outline" : "create-outline"}
+                  />
+                </View>
               </View>
               <View className="items-end gap-2">
                 {item.lineValue != null ? (

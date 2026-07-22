@@ -7,7 +7,7 @@ import { api, RecipeGroups, RecipeSummary } from "../../services/api";
 import { colors } from "../../lib/theme";
 import RecipeCard from "../../components/RecipeCard";
 import RecipeDetail from "../../components/RecipeDetail";
-import { Button, SectionHeader, CenterState } from "../../components/ui";
+import { Badge, Button, SectionHeader, CenterState } from "../../components/ui";
 
 const EMPTY: RecipeGroups = { bookmarked: [], canCook: [], more: [] };
 
@@ -108,7 +108,12 @@ export default function RecipesScreen() {
             <>
               {data.bookmarked.length > 0 && (
                 <View className="gap-2.5">
-                  <SectionHeader title="Saved" subtitle="Recipes you bookmarked" accentColor={colors.accent} />
+                  <SectionHeader
+                    title="Saved"
+                    subtitle="Recipes you bookmarked"
+                    accentColor={colors.accent}
+                    right={<Badge label={`${data.bookmarked.length}`} icon="bookmark-outline" />}
+                  />
                   {data.bookmarked.map((r) => (
                     <RecipeCard key={`bm-${r.id}`} recipe={r} onPress={() => setDetailId(r.id)} onToggleBookmark={toggleBookmark} />
                   ))}
@@ -117,7 +122,12 @@ export default function RecipesScreen() {
 
               {data.canCook.length > 0 && (
                 <View className="gap-2.5">
-                  <SectionHeader title="Ready to cook" subtitle="You have every ingredient · cheapest first" accentColor={colors.success} />
+                  <SectionHeader
+                    title="Ready to cook"
+                    subtitle="You have every ingredient · cheapest first"
+                    accentColor={colors.success}
+                    right={<Badge label={`${data.canCook.length}`} tone="success" icon="checkmark-circle" />}
+                  />
                   {data.canCook.map((r) => (
                     <RecipeCard key={`cc-${r.id}`} recipe={r} onPress={() => setDetailId(r.id)} onToggleBookmark={toggleBookmark} />
                   ))}
@@ -126,7 +136,12 @@ export default function RecipesScreen() {
 
               {data.more.length > 0 && (
                 <View className="gap-2.5">
-                  <SectionHeader title="More recipes" subtitle="Sorted by what you have on hand" accentColor={colors.info} />
+                  <SectionHeader
+                    title="More recipes"
+                    subtitle="Sorted by what you have on hand"
+                    accentColor={colors.info}
+                    right={<Badge label={`${data.more.length}`} tone="info" icon="restaurant-outline" />}
+                  />
                   {data.more.map((r) => (
                     <RecipeCard key={`mo-${r.id}`} recipe={r} onPress={() => setDetailId(r.id)} onToggleBookmark={toggleBookmark} />
                   ))}

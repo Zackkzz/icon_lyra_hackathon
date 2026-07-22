@@ -23,7 +23,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: inkAlpha(0.45),
         tabBarStyle: {
-          backgroundColor: colors.canvas,
+          backgroundColor: colors.surface,
           borderTopColor: inkAlpha(0.1),
           borderTopWidth: 1,
           height: Platform.OS === "ios" ? 84 : 64,
@@ -63,7 +63,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="spending"
         options={{
-          title: "Spending",
+          title: "Budget",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet" size={size ?? 22} color={color} />
           ),

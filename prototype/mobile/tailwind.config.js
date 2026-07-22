@@ -1,8 +1,6 @@
 /** @type {import('tailwindcss').Config} */
-// The palette below is the single source of truth for colours in the app.
-// It mirrors the requested @theme tokens exactly. Elevation / muted surfaces
-// are expressed with opacity variants of these tokens (e.g. bg-ink/5,
-// border-ink/10, text-ink/60) so no colour outside this set is ever used.
+// Approved Mealer visual direction: warm canvas, white surfaces, near-black
+// type, green primary actions, and orange/red attention states.
 module.exports = {
   content: [
     "./app/**/*.{js,jsx,ts,tsx}",
@@ -12,13 +10,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        canvas: "#121011",
-        ink: "#e2e4e1",
-        accent: "#00d985",
-        success: "#3dba8b",
-        warning: "#e4a55d",
-        error: "#de586b",
-        info: "#6690d2",
+        canvas: "#F6F5F0",
+        surface: "#FFFFFF",
+        ink: "#1C2321",
+        accent: "#2FA96B",
+        success: "#1E7A4B",
+        warning: "#F0A020",
+        error: "#C63A2F",
+        info: "#F97316",
       },
     },
   },

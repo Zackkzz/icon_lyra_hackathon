@@ -11,7 +11,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <View style={{ flex: 1, backgroundColor: colors.canvas }}>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
           <Stack
             screenOptions={{
               headerShown: false,

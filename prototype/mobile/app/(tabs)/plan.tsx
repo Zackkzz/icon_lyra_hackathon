@@ -27,11 +27,17 @@ import {
   dayNum,
 } from "../../lib/date";
 import DraggableMeal from "../../components/DraggableMeal";
-import { CenterState } from "../../components/ui";
+import { Badge, CenterState } from "../../components/ui";
 
 type Rect = { x: number; y: number; width: number; height: number };
 
 const CHIP_W = 150;
+const MEAL_ICONS: Record<MealType, React.ComponentProps<typeof Ionicons>["name"]> = {
+  Breakfast: "sunny-outline",
+  Lunch: "cafe-outline",
+  Dinner: "restaurant-outline",
+  Snack: "nutrition-outline",
+};
 
 export default function PlanScreen() {
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday());
@@ -183,16 +189,13 @@ export default function PlanScreen() {
             </Text>
           </View>
           {weekCost > 0 ? (
-            <View className="items-end">
-              <Text className="text-accent font-extrabold text-lg">${weekCost.toFixed(2)}</Text>
-              <Text className="text-ink/40 text-[11px]">week's meal cost</Text>
-            </View>
+            <Badge label={`$${weekCost.toFixed(2)} planned`} tone="accent" icon="wallet-outline" />
           ) : null}
         </View>
         <View className="flex-row items-center justify-between mt-2">
           <Pressable
             onPress={() => setWeekStart((w) => addDays(w, -7))}
-            className="w-9 h-9 rounded-full bg-ink/10 items-center justify-center"
+            className="w-9 h-9 rounded-xl bg-surface border border-ink/5 items-center justify-center"
           >
             <Ionicons name="chevron-back" size={18} color={colors.ink} />
           </Pressable>
@@ -205,7 +208,7 @@ export default function PlanScreen() {
           </Pressable>
           <Pressable
             onPress={() => setWeekStart((w) => addDays(w, 7))}
-            className="w-9 h-9 rounded-full bg-ink/10 items-center justify-center"
+            className="w-9 h-9 rounded-xl bg-surface border border-ink/5 items-center justify-center"
           >
             <Ionicons name="chevron-forward" size={18} color={colors.ink} />
           </Pressable>
@@ -237,7 +240,7 @@ export default function PlanScreen() {
                     }
                   }}
                   className={`flex-1 mb-1.5 rounded-2xl border px-3 py-2 flex-row items-center ${
-                    highlight ? "border-accent bg-accent/10" : "border-ink/10 bg-ink/5"
+                    highlight ? "border-accent bg-accent/10" : "border-ink/5 bg-surface"
                   }`}
                 >
                   <View className="w-12 items-center">
@@ -261,6 +264,7 @@ export default function PlanScreen() {
                             onPress={() => removePlan(p)}
                             className="flex-row items-center gap-1 bg-accent/15 border border-accent/30 rounded-full pl-2.5 pr-1.5 py-1"
                           >
+                            <Ionicons name={MEAL_ICONS[p.mealType]} size={11} color={colors.accent} />
                             <Text className="text-accent text-xs font-semibold max-w-[110px]" numberOfLines={1}>
                               {p.recipeName ?? "Meal"}
                             </Text>

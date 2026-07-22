@@ -3,7 +3,7 @@ import { Modal, View, Text, ScrollView, Pressable, ActivityIndicator, Platform, 
 import { Ionicons } from "@expo/vector-icons";
 import { api, Recipe, RecipeIngredient } from "../services/api";
 import { colors } from "../lib/theme";
-import { Button } from "./ui";
+import { Badge, Button } from "./ui";
 
 function IngredientRow({ ing, scale }: { ing: RecipeIngredient; scale: number }) {
   const cost = ing.lineCost != null ? ing.lineCost * scale : null;
@@ -111,19 +111,13 @@ export default function RecipeDetail({
               <Text className="text-ink text-xl font-extrabold">{recipe?.name ?? "Recipe"}</Text>
               {recipe ? (
                 <View className="flex-row items-center gap-2 mt-1 flex-wrap">
-                  <Text className="text-ink/50 text-xs">{recipe.prepTimeMinutes} min</Text>
-                  <Text className="text-ink/50 text-xs">·</Text>
-                  <Text className="text-ink/50 text-xs">serves {recipe.servings}</Text>
+                  <Badge label={`${recipe.prepTimeMinutes} min`} icon="time-outline" />
+                  <Badge label={`Serves ${recipe.servings}`} icon="people-outline" />
                   {recipe.costPerServing != null ? (
-                    <View className="bg-accent/15 px-1.5 py-0.5 rounded-full">
-                      <Text className="text-accent text-[11px] font-bold">${recipe.costPerServing.toFixed(2)}/serving</Text>
-                    </View>
+                    <Badge label={`$${recipe.costPerServing.toFixed(2)}/serve`} tone="accent" icon="cash-outline" />
                   ) : null}
                   {recipe.isAiGenerated ? (
-                    <View className="flex-row items-center gap-1 bg-accent/15 px-1.5 py-0.5 rounded-full">
-                      <Ionicons name="sparkles" size={10} color={colors.accent} />
-                      <Text className="text-accent text-[10px] font-bold">AI</Text>
-                    </View>
+                    <Badge label="AI" tone="accent" icon="sparkles" />
                   ) : null}
                 </View>
               ) : null}
