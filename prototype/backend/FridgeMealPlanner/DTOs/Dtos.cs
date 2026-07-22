@@ -143,6 +143,27 @@ public record WeekSpendingDto(
 
 public record SpendingResponse(decimal TotalSpent, List<WeekSpendingDto> Weeks);
 
+public record SpendingTrendPointDto(
+    DateOnly StartDate,
+    string Label,
+    decimal Spent,
+    int PurchaseCount,
+    bool IsCurrent
+);
+
+public record SpendingTrendResponse(
+    string Period,
+    string CurrentPeriodLabel,
+    DateOnly CurrentPeriodStart,
+    DateOnly CurrentPeriodEnd,
+    decimal CurrentSpent,
+    decimal PreviousSpent,
+    decimal? ChangePercentage,
+    decimal VisibleTotal,
+    int CurrentPurchaseCount,
+    List<SpendingTrendPointDto> Points
+);
+
 // ---- Meal plan ----
 
 public record MealPlanDto(
