@@ -33,7 +33,10 @@ public class MealPlanController : ControllerBase
             .ThenBy(mp => mp.MealType)
             .Select(mp => new MealPlanDto(
                 mp.Id, mp.Date, mp.MealType, mp.CookedMealId, mp.RecipeId,
-                mp.CookedMeal != null ? mp.CookedMeal.RecipeName : null))
+                mp.CookedMeal != null ? mp.CookedMeal.RecipeName : null,
+                mp.CookedMeal != null && mp.CookedMeal.Portions > 0
+                    ? mp.CookedMeal.Cost / mp.CookedMeal.Portions
+                    : 0m))
             .ToListAsync();
 
         return Ok(plans);
@@ -65,8 +68,10 @@ public class MealPlanController : ControllerBase
         _db.MealPlans.Add(plan);
         await _db.SaveChangesAsync();
 
+        var perPortion = cooked.Portions > 0 ? Math.Round(cooked.Cost / cooked.Portions, 2) : 0m;
         return CreatedAtAction(nameof(GetWeek), new { week = plan.Date.ToString("yyyy-MM-dd") },
-            new MealPlanDto(plan.Id, plan.Date, plan.MealType, plan.CookedMealId, plan.RecipeId, cooked.RecipeName));
+            new MealPlanDto(plan.Id, plan.Date, plan.MealType, plan.CookedMealId, plan.RecipeId,
+                cooked.RecipeName, perPortion));
     }
 
     [HttpDelete("{id}")]

@@ -124,6 +124,7 @@ public record CookedMealDto(
     int? RecipeId,
     string RecipeName,
     int Portions,
+    int PortionsAvailable,   // portions not yet placed on the calendar
     decimal Cost,
     DateTime CookedAt
 );
@@ -150,7 +151,8 @@ public record MealPlanDto(
     MealType MealType,
     int? CookedMealId,
     int? RecipeId,
-    string? RecipeName
+    string? RecipeName,
+    decimal CostPerPortion   // ingredient cost of this one portion
 );
 
 // A planned meal is a portion of a cooked meal.

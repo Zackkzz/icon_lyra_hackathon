@@ -32,6 +32,9 @@ export const UNITS: Unit[] = [
 
 export type Source = "Receipt" | "Manual";
 
+export type MealType = "Breakfast" | "Lunch" | "Dinner" | "Snack";
+export const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
+
 // ---- Auth ----
 
 export interface AuthResponse {
@@ -141,8 +144,27 @@ export interface CookedMeal {
   recipeId: number | null;
   recipeName: string;
   portions: number;
+  portionsAvailable: number; // portions not yet placed on the calendar
   cost: number;
   cookedAt: string;
+}
+
+// ---- Meal plan (calendar) ----
+
+export interface MealPlan {
+  id: number;
+  date: string;
+  mealType: MealType;
+  cookedMealId: number | null;
+  recipeId: number | null;
+  recipeName: string | null;
+  costPerPortion: number;
+}
+
+export interface CreateMealPlanRequest {
+  date: string;
+  mealType: MealType;
+  cookedMealId: number;
 }
 
 // ---- Spending ----
@@ -261,5 +283,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ recipeId, portions }),
     }),
+  getCookedMeals: () => request<CookedMeal[]>("/api/CookedMeals"),
   getSpending: () => request<SpendingResponse>("/api/Spending"),
+
+  // meal plan (calendar)
+  getMealPlan: (week: string) => request<MealPlan[]>(`/api/MealPlan?week=${week}`),
+  createMealPlan: (body: CreateMealPlanRequest) =>
+    request<MealPlan>("/api/MealPlan", { method: "POST", body: JSON.stringify(body) }),
+  deleteMealPlan: (id: number) =>
+    request<void>(`/api/MealPlan/${id}`, { method: "DELETE" }),
 };

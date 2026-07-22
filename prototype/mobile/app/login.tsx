@@ -17,7 +17,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Redirect href="/(tabs)/recipes" />;
+  if (user) return <Redirect href="/(tabs)/plan" />;
 
   async function submit() {
     setError(null);
@@ -32,7 +32,7 @@ export default function LoginScreen() {
       } else {
         await signUp(email, password, displayName || undefined);
       }
-      router.replace("/(tabs)/recipes");
+      router.replace("/(tabs)/plan");
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
     } finally {

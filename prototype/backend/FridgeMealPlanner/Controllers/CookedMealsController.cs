@@ -27,7 +27,8 @@ public class CookedMealsController : ControllerBase
             .Where(cm => cm.UserId == userId)
             .OrderByDescending(cm => cm.CookedAt)
             .Select(cm => new CookedMealDto(
-                cm.Id, cm.RecipeId, cm.RecipeName, cm.Portions, cm.Cost, cm.CookedAt))
+                cm.Id, cm.RecipeId, cm.RecipeName, cm.Portions,
+                cm.Portions - cm.MealPlans.Count(), cm.Cost, cm.CookedAt))
             .ToListAsync();
 
         return Ok(meals);
@@ -133,7 +134,8 @@ public class CookedMealsController : ControllerBase
         _db.CookedMeals.Add(cooked);
         await _db.SaveChangesAsync();
 
-        return Ok(new CookedMealDto(cooked.Id, cooked.RecipeId, cooked.RecipeName, cooked.Portions, cooked.Cost, cooked.CookedAt));
+        return Ok(new CookedMealDto(cooked.Id, cooked.RecipeId, cooked.RecipeName,
+            cooked.Portions, cooked.Portions, cooked.Cost, cooked.CookedAt));
     }
 
     private static string Fmt(decimal q) =>

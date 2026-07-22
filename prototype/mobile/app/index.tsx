@@ -14,5 +14,5 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={user ? "/(tabs)/recipes" : "/login"} />;
+  return <Redirect href={user ? "/(tabs)/plan" : "/login"} />;
 }
