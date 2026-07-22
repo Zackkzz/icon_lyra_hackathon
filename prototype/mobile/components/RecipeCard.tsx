@@ -1,86 +1,68 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { RecipeSummary } from '../services/api';
+import React from "react";
+import { View, Text, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { RecipeSummary } from "../services/api";
+import { MatchBar } from "./ui";
+import { colors } from "../lib/theme";
 
-interface Props {
+export default function RecipeCard({
+  recipe,
+  onPress,
+  showExpiring,
+}: {
   recipe: RecipeSummary;
   onPress: () => void;
-}
-
-export default function RecipeCard({ recipe, onPress }: Props) {
+  showExpiring?: boolean;
+}) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>{recipe.name}</Text>
-        <Text style={styles.desc} numberOfLines={2}>{recipe.description}</Text>
-        <View style={styles.meta}>
-          <Text style={styles.metaText}>{recipe.prepTimeMinutes} min</Text>
-          <Text style={styles.metaText}>·</Text>
-          <Text style={styles.metaText}>{recipe.servings} servings</Text>
+    <Pressable onPress={onPress} className="bg-ink/5 border border-ink/10 rounded-2xl p-4 gap-3 active:opacity-70">
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text className="text-ink font-bold text-base flex-shrink" numberOfLines={1}>
+              {recipe.name}
+            </Text>
+            {recipe.isAiGenerated ? (
+              <View className="flex-row items-center gap-1 bg-accent/15 px-1.5 py-0.5 rounded-full">
+                <Ionicons name="sparkles" size={10} color={colors.accent} />
+                <Text className="text-accent text-[10px] font-bold">AI</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text className="text-ink/50 text-xs mt-1" numberOfLines={2}>
+            {recipe.description}
+          </Text>
+        </View>
+        <View className="items-center">
+          <Text className="text-ink font-extrabold text-lg leading-5">{Math.round(recipe.matchPercentage)}%</Text>
+          <Text className="text-ink/40 text-[10px]">have</Text>
         </View>
       </View>
-      {recipe.matchPercentage !== undefined && recipe.matchPercentage > 0 && (
-        <View style={styles.matchBadge}>
-          <Text style={styles.matchText}>{Math.round(recipe.matchPercentage)}%</Text>
-          <Text style={styles.matchLabel}>match</Text>
+
+      <MatchBar pct={recipe.matchPercentage} />
+
+      <View className="flex-row items-center gap-3">
+        <View className="flex-row items-center gap-1">
+          <Ionicons name="time-outline" size={13} color={colors.ink + "80"} />
+          <Text className="text-ink/60 text-xs">{recipe.prepTimeMinutes} min</Text>
         </View>
-      )}
-    </TouchableOpacity>
+        <View className="flex-row items-center gap-1">
+          <Ionicons name="people-outline" size={13} color={colors.ink + "80"} />
+          <Text className="text-ink/60 text-xs">{recipe.servings}</Text>
+        </View>
+        <Text className="text-ink/60 text-xs">
+          {recipe.matchCount}/{recipe.totalIngredients} ingredients
+        </Text>
+      </View>
+
+      {showExpiring && recipe.expiringIngredients.length > 0 ? (
+        <View className="flex-row items-center gap-1.5 flex-wrap">
+          <Ionicons name="alert-circle" size={13} color={colors.warning} />
+          <Text className="text-warning text-xs font-semibold">
+            Uses {recipe.expiringIngredients.join(", ")}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  content: {
-    flex: 1,
-    marginRight: 10,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  desc: {
-    fontSize: 12,
-    color: '#95A5A6',
-    marginBottom: 6,
-    lineHeight: 16,
-  },
-  meta: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 11,
-    color: '#BDC3C7',
-  },
-  matchBadge: {
-    backgroundColor: '#27AE60',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-  },
-  matchText: {
-    color: '#FFF',
-    fontWeight: '800',
-    fontSize: 18,
-  },
-  matchLabel: {
-    color: '#E8F8F0',
-    fontSize: 10,
-  },
-});

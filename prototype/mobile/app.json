@@ -4,13 +4,29 @@
     "slug": "fridge-meal-planner",
     "version": "1.0.0",
     "scheme": "fridge-planner",
-    "plugins": ["expo-router"],
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#121011",
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos so you can scan a grocery receipt.",
+          "cameraPermission": "The app needs access to your camera so you can photograph a grocery receipt."
+        }
+      ],
+      "expo-font"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "userInterfaceStyle": "dark"
     },
     "android": {
+      "userInterfaceStyle": "dark",
       "adaptiveIcon": {
-        "backgroundColor": "#FFF8F0"
+        "backgroundColor": "#121011"
       }
     }
   }

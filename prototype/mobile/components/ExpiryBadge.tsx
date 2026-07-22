@@ -1,39 +1,42 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React from "react";
+import { View, Text } from "react-native";
+import { daysUntil } from "../lib/date";
 
-interface Props {
-  bestBeforeDate: string;
-}
+// Colour-codes how close an item is to expiry, using only palette tokens.
+export default function ExpiryBadge({ bestBeforeDate }: { bestBeforeDate: string }) {
+  const days = daysUntil(bestBeforeDate);
 
-export default function ExpiryBadge({ bestBeforeDate }: Props) {
-  const daysUntilExpiry = Math.ceil(
-    (new Date(bestBeforeDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  );
+  let label: string;
+  let tone: "error" | "warning" | "success";
 
-  const color = daysUntilExpiry < 2 ? '#E74C3C' : daysUntilExpiry <= 5 ? '#F39C12' : '#27AE60';
-  const label = daysUntilExpiry < 0
-    ? 'Expired'
-    : daysUntilExpiry === 0
-    ? 'Today'
-    : `${daysUntilExpiry}d`;
+  if (days < 0) {
+    label = "Expired";
+    tone = "error";
+  } else if (days === 0) {
+    label = "Today";
+    tone = "error";
+  } else if (days <= 3) {
+    label = `${days}d left`;
+    tone = "warning";
+  } else {
+    label = `${days}d left`;
+    tone = "success";
+  }
+
+  const toneBg = {
+    error: "bg-error/15",
+    warning: "bg-warning/15",
+    success: "bg-success/15",
+  }[tone];
+  const toneText = {
+    error: "text-error",
+    warning: "text-warning",
+    success: "text-success",
+  }[tone];
 
   return (
-    <View style={[styles.badge, { backgroundColor: color }]}>
-      <Text style={styles.text}>{label}</Text>
+    <View className={`px-2 py-0.5 rounded-full ${toneBg}`}>
+      <Text className={`text-xs font-semibold ${toneText}`}>{label}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  text: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-});
