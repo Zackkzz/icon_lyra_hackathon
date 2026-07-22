@@ -99,7 +99,6 @@ public class ShoppingListController : ControllerBase
 
         return Ok(new ShoppingListDto(
             shoppingList.Id,
-            shoppingList.UserId,
             shoppingList.WeekStartDate,
             shoppingList.GeneratedAt,
             shoppingList.ShoppingListItems.Select(sli => new ShoppingListItemDto(

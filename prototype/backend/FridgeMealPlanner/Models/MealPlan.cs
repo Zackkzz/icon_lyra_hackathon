@@ -17,7 +17,13 @@ public class MealPlan
 
     public MealType MealType { get; set; }
 
+    // A planned meal is one portion of a cooked meal.
+    public int? CookedMealId { get; set; }
+
     public int? RecipeId { get; set; }
+
+    [ForeignKey(nameof(CookedMealId))]
+    public CookedMeal? CookedMeal { get; set; }
 
     [ForeignKey(nameof(RecipeId))]
     public Recipe? Recipe { get; set; }

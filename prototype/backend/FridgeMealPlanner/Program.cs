@@ -1,6 +1,9 @@
+using System.Text.Json.Serialization;
 using FridgeMealPlanner.Data;
 using FridgeMealPlanner.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +14,15 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Serialize enums (Unit, MealType, Source) as their string names so the
+        // mobile client's string unions line up with the API.
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -25,8 +36,30 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ---- Auth ----
+builder.Services.AddSingleton<JwtTokenService>();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var jwt = new JwtTokenService(builder.Configuration);
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = JwtTokenService.Issuer,
+            ValidateAudience = true,
+            ValidAudience = JwtTokenService.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = jwt.SigningKey,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+builder.Services.AddAuthorization();
+
 builder.Services.AddHttpClient<OpenRouterService>();
 builder.Services.AddScoped<ToolExecutor>();
+builder.Services.AddScoped<ReceiptScanService>();
+builder.Services.AddScoped<RecipeGenerationService>();
 
 var app = builder.Build();
 
@@ -40,6 +73,9 @@ using (var scope = app.Services.CreateScope())
 app.UseCors();
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

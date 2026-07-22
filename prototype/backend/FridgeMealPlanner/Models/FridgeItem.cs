@@ -9,6 +9,9 @@ public class FridgeItem
     [Key]
     public int Id { get; set; }
 
+    // Owner of this fridge item. Every fridge item is scoped to a single user.
+    public int UserId { get; set; }
+
     public int IngredientId { get; set; }
 
     [Column(TypeName = "decimal(10,2)")]

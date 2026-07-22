@@ -24,6 +24,12 @@ public class Recipe
     [MaxLength(500)]
     public string? ImageUrl { get; set; }
 
+    // null = global/seeded recipe visible to everyone.
+    // non-null = recipe generated for / owned by a specific user.
+    public int? UserId { get; set; }
+
+    public bool IsAiGenerated { get; set; }
+
     public ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
     public ICollection<MealPlan> MealPlans { get; set; } = new List<MealPlan>();
 }

@@ -3,6 +3,7 @@ using System;
 using FridgeMealPlanner.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FridgeMealPlanner.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260722065748_AddAuthAndUserScoping")]
+    partial class AddAuthAndUserScoping
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,40 +24,6 @@ namespace FridgeMealPlanner.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("FridgeMealPlanner.Models.CookedMeal", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CookedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Portions")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("RecipeId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RecipeName")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RecipeId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("CookedMeals");
-                });
 
             modelBuilder.Entity("FridgeMealPlanner.Models.FridgeItem", b =>
                 {
@@ -235,9 +204,6 @@ namespace FridgeMealPlanner.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CookedMealId")
-                        .HasColumnType("integer");
-
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
@@ -253,8 +219,6 @@ namespace FridgeMealPlanner.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CookedMealId");
 
                     b.HasIndex("RecipeId");
 
@@ -837,16 +801,6 @@ namespace FridgeMealPlanner.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("FridgeMealPlanner.Models.CookedMeal", b =>
-                {
-                    b.HasOne("FridgeMealPlanner.Models.Recipe", "Recipe")
-                        .WithMany()
-                        .HasForeignKey("RecipeId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Recipe");
-                });
-
             modelBuilder.Entity("FridgeMealPlanner.Models.FridgeItem", b =>
                 {
                     b.HasOne("FridgeMealPlanner.Models.Ingredient", "Ingredient")
@@ -860,17 +814,10 @@ namespace FridgeMealPlanner.Migrations
 
             modelBuilder.Entity("FridgeMealPlanner.Models.MealPlan", b =>
                 {
-                    b.HasOne("FridgeMealPlanner.Models.CookedMeal", "CookedMeal")
-                        .WithMany("MealPlans")
-                        .HasForeignKey("CookedMealId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("FridgeMealPlanner.Models.Recipe", "Recipe")
                         .WithMany("MealPlans")
                         .HasForeignKey("RecipeId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("CookedMeal");
 
                     b.Navigation("Recipe");
                 });
@@ -913,11 +860,6 @@ namespace FridgeMealPlanner.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Ingredient");
-                });
-
-            modelBuilder.Entity("FridgeMealPlanner.Models.CookedMeal", b =>
-                {
-                    b.Navigation("MealPlans");
                 });
 
             modelBuilder.Entity("FridgeMealPlanner.Models.Ingredient", b =>

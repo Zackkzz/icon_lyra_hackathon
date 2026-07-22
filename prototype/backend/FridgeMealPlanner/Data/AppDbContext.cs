@@ -8,11 +8,13 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+    public DbSet<User> Users => Set<User>();
     public DbSet<Ingredient> Ingredients => Set<Ingredient>();
     public DbSet<FridgeItem> FridgeItems => Set<FridgeItem>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
+    public DbSet<CookedMeal> CookedMeals => Set<CookedMeal>();
     public DbSet<ShoppingList> ShoppingLists => Set<ShoppingList>();
     public DbSet<ShoppingListItem> ShoppingListItems => Set<ShoppingListItem>();
     public DbSet<UnitConversion> UnitConversions => Set<UnitConversion>();
@@ -22,6 +24,13 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // ---- Fluent API relationships ----
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+
+        modelBuilder.Entity<FridgeItem>()
+            .HasIndex(f => f.UserId);
 
         modelBuilder.Entity<FridgeItem>()
             .HasOne(f => f.Ingredient)
@@ -45,6 +54,22 @@ public class AppDbContext : DbContext
             .HasOne(mp => mp.Recipe)
             .WithMany(r => r.MealPlans)
             .HasForeignKey(mp => mp.RecipeId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Deleting a cooked meal removes its planned portions from the calendar.
+        modelBuilder.Entity<MealPlan>()
+            .HasOne(mp => mp.CookedMeal)
+            .WithMany(cm => cm.MealPlans)
+            .HasForeignKey(mp => mp.CookedMealId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CookedMeal>()
+            .HasIndex(cm => cm.UserId);
+
+        modelBuilder.Entity<CookedMeal>()
+            .HasOne(cm => cm.Recipe)
+            .WithMany()
+            .HasForeignKey(cm => cm.RecipeId)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<ShoppingListItem>()
