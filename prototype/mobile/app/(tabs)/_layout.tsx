@@ -6,6 +6,8 @@ import { colors, inkAlpha } from "../../lib/theme";
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
+  const tabBarHeight = Platform.select({ ios: 84, web: 76, default: 68 });
+  const tabBarBottomPadding = Platform.select({ ios: 28, web: 12, default: 10 });
 
   if (loading) {
     return (
@@ -22,15 +24,24 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: inkAlpha(0.45),
+        tabBarAllowFontScaling: false,
+        tabBarLabelPosition: "below-icon",
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: inkAlpha(0.1),
           borderTopWidth: 1,
-          height: Platform.OS === "ios" ? 84 : 64,
+          height: tabBarHeight,
           paddingTop: 8,
-          paddingBottom: Platform.OS === "ios" ? 28 : 10,
+          paddingBottom: tabBarBottomPadding,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
+        tabBarItemStyle: { minHeight: 52 },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          lineHeight: 14,
+          fontWeight: "700",
+          marginBottom: 0,
+        },
+        tabBarIconStyle: { marginTop: 1 },
       }}
     >
       <Tabs.Screen

@@ -6,6 +6,7 @@
     "scheme": "mealer",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#121011",
+    "icon": "./assets/mealer-icon.png",
     "plugins": [
       "expo-router",
       "expo-asset",
@@ -26,8 +27,12 @@
     "android": {
       "userInterfaceStyle": "dark",
       "adaptiveIcon": {
-        "backgroundColor": "#121011"
+        "foregroundImage": "./assets/mealer-icon.png",
+        "backgroundColor": "#F6F5F0"
       }
+    },
+    "web": {
+      "favicon": "./assets/mealer-icon.png"
     }
   }
 }
