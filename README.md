@@ -28,8 +28,8 @@ prototype.
 
 | Layer | Technology |
 |---|---|
-| Mobile | React Native, Expo 52, Expo Router, TypeScript |
-| UI | NativeWind, Tailwind CSS, Expo Ionicons |
+| Mobile | React Native 0.81, Expo SDK 54, React 19, Expo Router, TypeScript |
+| UI | NativeWind, Tailwind CSS, Expo Ionicons, Gesture Handler + Reanimated |
 | Backend | ASP.NET Core, C#, .NET 10 |
 | Data access | Entity Framework Core, Npgsql |
 | Database | PostgreSQL 16 |
@@ -98,15 +98,17 @@ performing financial aggregation in the mobile client.
 
 ### Requirements
 
-- Docker with Docker Compose
+- Docker with Docker Compose (runs the PostgreSQL database)
 - .NET 10 SDK
-- Node.js and npm
+- Node.js 20.19.4+ and npm (required by Expo SDK 54)
 - An OpenRouter API key for receipt scanning and AI recipe generation
+- Optional: the Expo Go app on a phone for on-device testing
 
 ### 1. Start PostgreSQL
 
 ```bash
 cd prototype/database
+cp .env.example .env   # optional — the defaults already match the backend
 docker compose up -d
 ```
 
@@ -115,33 +117,34 @@ The development database listens on port `5436`.
 ### 2. Start the backend
 
 ```bash
-cd prototype/backend/FridgeMealPlanner
-export OPENROUTER_API_KEY="your-key"
-export JWT_SECRET="replace-with-a-long-random-secret"
+cd prototype/backend
+cp .env.example .env
+# edit .env and set OPENROUTER_API_KEY — the DB connection string is prefilled.
+# Optionally set JWT_SECRET (a dev fallback is used if omitted) and override
+# OPENROUTER_MODEL / OPENROUTER_VISION_MODEL.
+
+cd FridgeMealPlanner
 dotnet run
 ```
 
-The API starts at `http://localhost:5097`, applies pending migrations, and
-provides Swagger UI at `http://localhost:5097/swagger`.
-
-Optional AI model configuration:
-
-```bash
-export OPENROUTER_MODEL="openai/gpt-4o-mini"
-export OPENROUTER_VISION_MODEL="openai/gpt-4o"
-```
+The backend loads `.env` automatically on startup (via DotNetEnv). It listens on
+`http://0.0.0.0:5097` (reachable from other devices on your network), applies any
+pending EF Core migrations, and serves Swagger UI at
+`http://localhost:5097/swagger`.
 
 ### 3. Start the mobile app
 
 ```bash
 cd prototype/mobile
-npm ci
-export EXPO_PUBLIC_API_URL="http://localhost:5097"
-npm start
+npm install
+npm run web   # open in a browser, or use `npm start` for the Expo dev server
 ```
 
-For a physical phone, set `EXPO_PUBLIC_API_URL` to the computer's local network
-address instead of `localhost`.
+To test on a physical phone, run `npm start` and scan the QR code with **Expo
+Go**. The app automatically derives your dev machine's LAN address from the Metro
+host, so no configuration is needed — just keep the phone and computer on the
+same Wi-Fi. To point the app at a different backend (for example a deployed one),
+set `EXPO_PUBLIC_API_URL`, which always takes precedence.
 
 ## Verification
 
