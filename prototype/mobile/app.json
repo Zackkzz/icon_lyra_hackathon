@@ -22,14 +22,18 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "userInterfaceStyle": "dark"
+      "userInterfaceStyle": "dark",
+      "bundleIdentifier": "com.sun.labourlog.mealer"
     },
     "android": {
       "userInterfaceStyle": "dark",
       "adaptiveIcon": {
         "foregroundImage": "./assets/mealer-icon.png",
         "backgroundColor": "#F6F5F0"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/mealer-icon.png"
