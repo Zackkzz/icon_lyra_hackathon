@@ -23,7 +23,7 @@
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "dark",
-      "bundleIdentifier": "com.sun.labourlog.mealer"
+      "bundleIdentifier": "com.mealer"
     },
     "android": {
       "userInterfaceStyle": "dark",
