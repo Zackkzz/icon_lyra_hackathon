@@ -28,4 +28,9 @@ Thumbs.db
 # Docker
 pgdata/
 
-# EAS Build\nios/\nandroid/\n*.ipa\n*.apk\n*.aab
+# EAS Build
+ios/
+android/
+*.ipa
+*.apk
+*.aab
