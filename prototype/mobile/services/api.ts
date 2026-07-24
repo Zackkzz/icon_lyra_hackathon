@@ -19,8 +19,8 @@ function resolveBaseUrl(): string {
   const host = hostUri?.split(":")[0];
   if (host) return `http://${host}:${API_PORT}`;
 
-  // Fallback for web / running on the same machine.
-  return `http://localhost:${API_PORT}`;
+  // Fallback to production backend when no explicit URL is set.
+  return "https://mealer.sunwookim.dev";
 }
 
 const BASE_URL = resolveBaseUrl();
